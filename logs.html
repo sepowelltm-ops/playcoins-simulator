@@ -1,62 +1,69 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>PlayCoins Logs</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta charset="UTF-8">
+  <title>Transaction Logs</title>
+  <link rel="stylesheet" href="../style.css">
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    h1 { margin-bottom: 10px; }
+    #log-list { list-style: none; padding-left: 0; }
+    #log-list li { margin-bottom: 5px; border-bottom: 1px solid #ccc; padding: 5px; }
+  </style>
 </head>
 <body>
-  <header>
-    <h1>Transaction Logs</h1>
-    <div id="balance">Coins: 0</div>
-    <div id="logged-in-user">Not logged in</div>
-  </header>
+  <h1>Transaction Logs</h1>
+  <ul id="log-list">
+    <li>Loading logs...</li>
+  </ul>
 
-  <section id="logs-section">
-    <ul id="logs-list">
-      <li>Loading logs...</li>
-    </ul>
-  </section>
-
-  <a href="index.html">Back to Main Menu</a>
-
-  <script src="script.js"></script>
+  <button id="refresh-btn">Refresh Logs</button>
   <script>
-    const balanceEl = document.getElementById('balance');
-    const loggedInUserEl = document.getElementById('logged-in-user');
-    const logsList = document.getElementById('logs-list');
+    const logList = document.getElementById('log-list');
+    const refreshBtn = document.getElementById('refresh-btn');
 
-    // Get the currently logged-in user
-    const currentUser = localStorage.getItem('currentUser');
+    function renderTransactionLog(){
+      const logs = JSON.parse(localStorage.getItem("transactionLogs")) || [];
+      logList.innerHTML = "";
 
-    if (!currentUser) {
-      loggedInUserEl.textContent = "Not logged in";
-      balanceEl.textContent = "Coins: 0";
-      logsList.innerHTML = '<li>Please log in on the main menu first.</li>';
-    } else {
-      loggedInUserEl.textContent = `Logged in as: ${currentUser}`;
-
-      // Load accounts
-      const accounts = JSON.parse(localStorage.getItem('accounts')) || {};
-      const userData = accounts[currentUser];
-
-      // Show balance
-      balanceEl.textContent = `Coins: ${userData.balance}`;
-
-      // Show transaction logs
-      const transactionLog = userData.transactionLog || [];
-      logsList.innerHTML = '';
-
-      if (transactionLog.length === 0) {
-        logsList.innerHTML = '<li>No transactions yet.</li>';
-      } else {
-        transactionLog.forEach(t => {
-          const li = document.createElement('li');
-          li.textContent = `[${t.time}] ${t.type}: ${t.amount} coins (User: ${currentUser})`;
-          logsList.appendChild(li);
-        });
+      if(logs.length === 0){
+        logList.innerHTML = "<li>No transactions yet.</li>";
+        return;
       }
+
+      logs.forEach(l => {
+        const li = document.createElement("li");
+        let text = "";
+
+        switch(l.type){
+          case "deposit":
+            text = `[Deposit] ${l.user} deposited ${l.amount} coins`;
+            break;
+          case "withdraw":
+            text = `[Withdraw] ${l.user} requested ${l.amount} coins`;
+            if(l.by) text += ` (Username: ${l.by})`;
+            break;
+          case "admin-add":
+            text = `[Admin Add] ${l.by} added ${l.amount} coins to ${l.user}`;
+            break;
+          case "admin-remove":
+            text = `[Admin Remove] ${l.by} removed ${l.amount} coins from ${l.user}`;
+            break;
+          default:
+            text = `[Other] ${JSON.stringify(l)}`;
+        }
+
+        const date = new Date(l.timestamp).toLocaleString();
+        li.textContent = `${date} - ${text}`;
+        logList.appendChild(li);
+      });
     }
+
+    // Refresh logs on page load
+    renderTransactionLog();
+
+    // Refresh button
+    refreshBtn.onclick = renderTransactionLog;
   </script>
 </body>
 </html>
