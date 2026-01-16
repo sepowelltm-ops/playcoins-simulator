@@ -1,23 +1,132 @@
-// Make sure username is loaded from localStorage
-username = localStorage.getItem('username') || "Unknown";
+// ===========================
+// GLOBAL VARIABLES
+// ===========================
+const accounts = JSON.parse(localStorage.getItem('accounts')) || {};
+const currentUser = localStorage.getItem('currentUser');
+let playerBalance = currentUser && accounts[currentUser] ? accounts[currentUser].balance : 0;
 
-// Deposit example
-function deposit(amount) {
-  if (!username) return alert("Please login first!");
-  if (!amount || amount <= 0) return alert("Enter a valid deposit amount");
+const balanceEl = document.getElementById('balance');
+const messageEl = document.getElementById('message');
 
-  balance += amount;
-  updateBalanceDisplay();
-  addTransaction("Deposit", amount);
+// Admin panel
+const adminPanel = document.getElementById('admin-panel');
+const targetUserInput = document.getElementById('admin-target');
+const coinInput = document.getElementById('admin-coins');
+const addBtn = document.getElementById('admin-add-btn');
+const removeBtn = document.getElementById('admin-remove-btn');
+const clearLogsBtn = document.getElementById('clear-logs-btn');
+
+updateBalance();
+
+// ===========================
+// BALANCE FUNCTIONS
+// ===========================
+function updateBalance(){
+    if(!balanceEl) return;
+    playerBalance = currentUser && accounts[currentUser] ? accounts[currentUser].balance : 0;
+    balanceEl.textContent = `Coins: ${playerBalance}`;
 }
 
-// Withdraw example
-function withdraw(amount) {
-  if (!username) return alert("Please login first!");
-  if (!amount || amount <= 0) return alert("Enter a valid withdraw amount");
-  if (amount > balance) return alert("Not enough coins");
+// ===========================
+// TRANSACTION LOG
+// ===========================
+function addTransactionLog({type, user, amount, by=null}){
+    const logs = JSON.parse(localStorage.getItem("transactionLogs")) || [];
+    logs.push({
+        type, user, amount, by, timestamp: Date.now()
+    });
+    localStorage.setItem("transactionLogs", JSON.stringify(logs));
+}
 
-  balance -= amount;
-  updateBalanceDisplay();
-  addTransaction("Withdraw", amount);
+// ===========================
+// ADMIN PANEL
+// ===========================
+if(currentUser === "FF2DMD" && adminPanel){
+    adminPanel.style.display = "block";
+
+    addBtn.onclick = () => {
+        const targetUser = targetUserInput.value;
+        const coinsToAdd = Number(coinInput.value);
+        if(!accounts[targetUser]) return alert("User not found");
+        accounts[targetUser].balance += coinsToAdd;
+        localStorage.setItem('accounts', JSON.stringify(accounts));
+        addTransactionLog({type: "admin-add", user: targetUser, amount: coinsToAdd, by: currentUser});
+        alert(`Added ${coinsToAdd} coins to ${targetUser}`);
+    };
+
+    removeBtn.onclick = () => {
+        const targetUser = targetUserInput.value;
+        const coinsToRemove = Number(coinInput.value);
+        if(!accounts[targetUser]) return alert("User not found");
+        accounts[targetUser].balance -= coinsToRemove;
+        localStorage.setItem('accounts', JSON.stringify(accounts));
+        addTransactionLog({type: "admin-remove", user: targetUser, amount: coinsToRemove, by: currentUser});
+        alert(`Removed ${coinsToRemove} coins from ${targetUser}`);
+    };
+
+    let logsCleared = false;
+    clearLogsBtn.onclick = () => {
+        if(logsCleared) return alert("Logs already cleared");
+        localStorage.setItem("transactionLogs", JSON.stringify([]));
+        logsCleared = true;
+        alert("Transaction logs cleared! New logs will continue normally.");
+    };
+}
+
+// ===========================
+// DEPOSIT / WITHDRAW BUTTONS
+// ===========================
+const depositBtn = document.getElementById('deposit-btn');
+const withdrawBtn = document.getElementById('withdraw-btn');
+
+if(depositBtn){
+    depositBtn.onclick = () => {
+        const amount = Number(prompt("Enter amount to deposit"));
+        if(!amount || amount <= 0) return;
+        addTransactionLog({type: "deposit", user: currentUser, amount: amount});
+        alert(`Deposit request of ${amount} logged. Admin must approve.`);
+    };
+}
+
+if(withdrawBtn){
+    withdrawBtn.onclick = () => {
+        const amount = Number(prompt("Enter amount to withdraw"));
+        if(!amount || amount <= 0) return;
+        const username = prompt("Enter your Roblox username for withdrawal");
+        if(!username) return;
+        addTransactionLog({type: "withdraw", user: currentUser, amount: amount, by: username});
+        alert(`Withdrawal request of ${amount} logged. Admin must approve.`);
+    };
+}
+
+// ===========================
+// LOGIN / REGISTER
+// ===========================
+const loginBtn = document.getElementById('login-btn');
+const registerBtn = document.getElementById('register-btn');
+const usernameInput = document.getElementById('username');
+const passwordInput = document.getElementById('password');
+
+if(loginBtn){
+    loginBtn.onclick = () => {
+        const username = usernameInput.value;
+        const password = passwordInput.value;
+        if(!accounts[username] || accounts[username].password !== password) return alert("Wrong username or password");
+        localStorage.setItem("currentUser", username);
+        alert(`Logged in as ${username}`);
+        location.reload();
+    };
+}
+
+if(registerBtn){
+    registerBtn.onclick = () => {
+        const username = usernameInput.value;
+        const password = passwordInput.value;
+        if(accounts[username]) return alert("User already exists");
+        accounts[username] = {password: password, balance: 5, transactionLog: []};
+        localStorage.setItem('accounts', JSON.stringify(accounts));
+        localStorage.setItem("currentUser", username);
+        alert(`Registered and logged in as ${username}`);
+        location.reload();
+    };
 }
