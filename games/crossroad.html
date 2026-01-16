@@ -1,1 +1,128 @@
-e
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Crossroad</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <h1>Crossroad</h1>
+  <div id="balance">Coins: 0</div>
+  <div id="message"></div>
+
+  <div id="controls">
+    <input type="number" id="bet-amount" placeholder="Bet coins" min="1">
+    <button id="start-btn">Start</button>
+    <button id="cashout-btn" disabled>Cash Out</button>
+  </div>
+
+  <div id="game-display">
+    <div id="player-position">Position: Start</div>
+    <div id="multiplier-display">Multiplier: x1.00</div>
+    <div id="path-buttons">
+      <button id="left-btn" disabled>Left</button>
+      <button id="center-btn" disabled>Center</button>
+      <button id="right-btn" disabled>Right</button>
+    </div>
+  </div>
+
+  <script>
+    const balanceEl = document.getElementById('balance');
+    const messageEl = document.getElementById('message');
+    const multiplierEl = document.getElementById('multiplier-display');
+    const posEl = document.getElementById('player-position');
+
+    const accounts = JSON.parse(localStorage.getItem('accounts')) || {};
+    const currentUser = localStorage.getItem('currentUser');
+
+    let playerBalance = currentUser && accounts[currentUser] ? accounts[currentUser].balance : 0;
+    let betAmount = 0;
+    let multiplier = 1;
+    let position = 0;
+    let gameActive = false;
+
+    updateBalance();
+
+    function updateBalance(){ balanceEl.textContent = `Coins: ${playerBalance}`; }
+
+    /* ---------------- START GAME ---------------- */
+    document.getElementById('start-btn').onclick = () => {
+      if (!currentUser) return alert("Login first!");
+      betAmount = Number(document.getElementById('bet-amount').value);
+      if (!betAmount || betAmount > playerBalance) return alert("Invalid bet");
+
+      multiplier = 1;
+      position = 0;
+      gameActive = true;
+
+      multiplierEl.textContent = `Multiplier: x${multiplier.toFixed(2)}`;
+      posEl.textContent = `Position: Step ${position}`;
+      messageEl.textContent = "Choose a path!";
+      
+      document.getElementById('cashout-btn').disabled = false;
+      document.getElementById('start-btn').disabled = true;
+      enablePathButtons(true);
+    };
+
+    /* ---------------- PATH SELECTION ---------------- */
+    document.getElementById('left-btn').onclick = () => move('Left');
+    document.getElementById('center-btn').onclick = () => move('Center');
+    document.getElementById('right-btn').onclick = () => move('Right');
+
+    function enablePathButtons(enable){
+      document.getElementById('left-btn').disabled = !enable;
+      document.getElementById('center-btn').disabled = !enable;
+      document.getElementById('right-btn').disabled = !enable;
+    }
+
+    function move(choice){
+      if (!gameActive) return;
+
+      // House bias: higher chance to die in center path
+      let crashChance = 0.2; // base 20%
+      if (choice === 'Center') crashChance += 0.1; // 30%
+      if (betAmount / playerBalance > 0.5) crashChance += 0.15; // big bets = more deadly
+      if (Math.random() < crashChance){
+        doCrash();
+        return;
+      }
+
+      position++;
+      multiplier = 1 + position*0.1; // 10% per step
+      multiplierEl.textContent = `Multiplier: x${multiplier.toFixed(2)}`;
+      posEl.textContent = `Position: Step ${position}`;
+      messageEl.textContent = "Choose your next path!";
+    }
+
+    /* ---------------- CASH OUT ---------------- */
+    document.getElementById('cashout-btn').onclick = () => {
+      if (!gameActive) return;
+      const winnings = Math.floor(betAmount * multiplier);
+      playerBalance += winnings;
+
+      accounts[currentUser].balance = playerBalance;
+      localStorage.setItem('accounts', JSON.stringify(accounts));
+
+      messageEl.textContent = `Cashed out at step ${position} - Won ${winnings} coins`;
+      endGame();
+    };
+
+    function doCrash(){
+      playerBalance -= betAmount;
+      accounts[currentUser].balance = playerBalance;
+      localStorage.setItem('accounts', JSON.stringify(accounts));
+
+      messageEl.textContent = `💥 Crashed at step ${position} - Lost ${betAmount} coins`;
+      endGame();
+    }
+
+    function endGame(){
+      gameActive = false;
+      document.getElementById('cashout-btn').disabled = true;
+      document.getElementById('start-btn').disabled = false;
+      enablePathButtons(false);
+      updateBalance();
+    }
+  </script>
+</body>
+</html>
