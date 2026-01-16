@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>PlayCoins Simulator</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header>
@@ -70,16 +70,15 @@
 
     <!-- Clear Logs -->
     <h3>Clear Transaction Logs</h3>
-    <button id="clear-logs-btn">Clear All Logs</button>
+    <button id="clear-logs-btn">Clear Log Display</button>
   </section>
 
   <!-- Transaction Log -->
   <div id="log"></div>
 
-  <script src="script.js"></script>
   <script>
     // ----------------------------
-    // LOGIN / REGISTER SYSTEM
+    // GLOBAL VARIABLES
     // ----------------------------
     const registerBtn = document.getElementById('register-btn');
     const loginBtn = document.getElementById('login-btn');
@@ -88,76 +87,73 @@
     const loginUsernameEl = document.getElementById('login-username');
     const loginPasswordEl = document.getElementById('login-password');
     const loggedInUserEl = document.getElementById('logged-in-user');
+    const balanceEl = document.getElementById('balance');
+    const logEl = document.getElementById('log');
+    const amountEl = document.getElementById('amount');
+    const clearLogsBtn = document.getElementById('clear-logs-btn');
 
     let accounts = JSON.parse(localStorage.getItem('accounts')) || {};
     let currentUser = localStorage.getItem('currentUser') || null;
+    let logsCleared = false;
 
-    function loadAccounts() {
-      accounts = JSON.parse(localStorage.getItem('accounts')) || {};
-      return accounts;
-    }
+    let pendingDeposits = JSON.parse(localStorage.getItem('pendingDeposits')) || [];
+    let pendingWithdrawals = JSON.parse(localStorage.getItem('pendingWithdrawals')) || [];
 
-    function saveAccounts() {
-      localStorage.setItem('accounts', JSON.stringify(accounts));
-    }
-
-    function getUserData(username = currentUser) {
-      loadAccounts();
-      return accounts[username] || null;
-    }
-
+    // ----------------------------
+    // UTILITY FUNCTIONS
+    // ----------------------------
+    function loadAccounts() { accounts = JSON.parse(localStorage.getItem('accounts')) || {}; return accounts; }
+    function saveAccounts() { localStorage.setItem('accounts', JSON.stringify(accounts)); }
+    function getUserData(username = currentUser) { loadAccounts(); return accounts[username] || null; }
     function updateBalanceDisplay() {
       const userData = getUserData();
-      document.getElementById('balance').textContent = `Coins: ${userData ? userData.balance : 0}`;
+      balanceEl.textContent = `Coins: ${userData ? userData.balance : 0}`;
     }
-
     function updateLoggedInDisplay() {
       loggedInUserEl.textContent = currentUser ? `Logged in as: ${currentUser}` : "Not logged in";
       document.getElementById('admin-panel').style.display = (currentUser === "FF2DMD") ? "block" : "none";
     }
 
-    // Register
+    // ----------------------------
+    // REGISTER / LOGIN
+    // ----------------------------
     registerBtn.addEventListener('click', () => {
       const username = regUsernameEl.value.trim();
       const password = regPasswordEl.value.trim();
       if (!username || !password) return alert("Enter both username and password");
-      if (accounts[username]) return alert("Username already exists");
-
+      if (accounts[username]) return alert("Username exists");
       accounts[username] = { password, balance: 5, transactionLog: [] };
       saveAccounts();
-      alert(`Account ${username} registered! You can now login.`);
+      alert(`Account ${username} registered!`);
       regUsernameEl.value = '';
       regPasswordEl.value = '';
     });
 
-    // Login
     loginBtn.addEventListener('click', () => {
       const username = loginUsernameEl.value.trim();
       const password = loginPasswordEl.value.trim();
       if (!username || !password) return alert("Enter both username and password");
-      if (!accounts[username]) return alert("Account does not exist");
-      if (accounts[username].password !== password) return alert("Incorrect password");
+      const userData = getUserData(username);
+      if (!userData) return alert("Account does not exist");
+      if (userData.password !== password) return alert("Incorrect password");
 
       currentUser = username;
       localStorage.setItem('currentUser', currentUser);
       updateLoggedInDisplay();
-      alert(`Logged in as ${username}`);
-      loginUsernameEl.value = '';
-      loginPasswordEl.value = '';
       updateBalanceDisplay();
       renderTransactionLog();
       renderPendingLists();
+      loginUsernameEl.value = '';
+      loginPasswordEl.value = '';
+      alert(`Logged in as ${username}`);
     });
 
     updateLoggedInDisplay();
     updateBalanceDisplay();
 
     // ----------------------------
-    // TRANSACTIONS
+    // TRANSACTION LOGS
     // ----------------------------
-    const logEl = document.getElementById('log');
-    const amountEl = document.getElementById('amount');
-
     function addTransaction(username, type, amount) {
       const userData = getUserData(username);
       if (!userData) return;
@@ -173,21 +169,19 @@
       if (!userData) return;
       logEl.innerHTML = '';
       userData.transactionLog.forEach(t => {
-        const p = document.createElement('p');
-        p.textContent = `[${t.time}] ${t.type}: ${t.amount} coins (User: ${currentUser})`;
-        logEl.prepend(p);
+        if (!logsCleared || t.time > logsClearedTime) {
+          const p = document.createElement('p');
+          p.textContent = `[${t.time}] ${t.type}: ${t.amount} coins (User: ${currentUser})`;
+          logEl.prepend(p);
+        }
       });
     }
 
     // ----------------------------
     // PENDING DEPOSITS / WITHDRAWALS
     // ----------------------------
-    let pendingDeposits = JSON.parse(localStorage.getItem('pendingDeposits')) || [];
-    let pendingWithdrawals = JSON.parse(localStorage.getItem('pendingWithdrawals')) || [];
-
     function renderPendingLists() {
       if (currentUser !== "FF2DMD") return;
-
       const pendingDepositsEl = document.getElementById('pending-deposits');
       const pendingWithdrawalsEl = document.getElementById('pending-withdrawals');
 
@@ -221,7 +215,6 @@
 
       userData.balance += item.amount;
       addTransaction(item.username, "Deposit (Approved)", item.amount);
-
       accounts[item.username] = userData;
       saveAccounts();
       pendingDeposits.splice(index, 1);
@@ -237,7 +230,6 @@
 
       userData.balance -= item.amount;
       addTransaction(item.username, "Withdrawal (Approved)", item.amount);
-
       accounts[item.username] = userData;
       saveAccounts();
       pendingWithdrawals.splice(index, 1);
@@ -250,7 +242,7 @@
     // DEPOSIT / WITHDRAW REQUESTS
     // ----------------------------
     document.getElementById('deposit-btn').addEventListener('click', () => {
-      if (!currentUser) return alert("Please login first!");
+      if (!currentUser) return alert("Please login!");
       const amount = Number(amountEl.value);
       if (!amount || amount <= 0) return alert("Enter valid amount");
 
@@ -313,25 +305,20 @@
     });
 
     // ----------------------------
-    // CLEAR LOGS BUTTON (ONE-TIME)
+    // CLEAR LOGS (ONE TIME VISUAL)
     // ----------------------------
-    let logsCleared = false;
-    const clearLogsBtn = document.getElementById('clear-logs-btn');
+    let logsClearedTime = null;
     clearLogsBtn.addEventListener('click', () => {
       if (currentUser !== "FF2DMD") return alert("Only FF2DMD can clear logs");
-
-      if (!logsCleared) {
-        Object.keys(accounts).forEach(user => {
-          accounts[user].transactionLog = [];
-        });
-        logsCleared = true;
-        saveAccounts();
+      if (!logsClearedTime) {
+        logsClearedTime = new Date(); // mark clear timestamp
+        alert("Logs cleared visually. New transactions will appear normally.");
         renderTransactionLog();
-        alert("Transaction logs cleared! New transactions will appear normally.");
       } else {
-        alert("Logs already cleared. New transactions will appear normally.");
+        alert("Logs have already been cleared once. New transactions will show as normal.");
       }
     });
+
   </script>
 </body>
 </html>
