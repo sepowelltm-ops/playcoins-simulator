@@ -1,44 +1,57 @@
-<script>
-  const logList = document.getElementById('log-list');
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Transaction Logs</title>
+  <link rel="stylesheet" href="../style.css">
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    h1 { margin-bottom: 20px; }
+    #log-list { list-style: none; padding: 0; }
+    #log-list li { margin-bottom: 5px; border-bottom: 1px solid #ccc; padding: 5px 0; }
+  </style>
+</head>
+<body>
+  <h1>Transaction Logs</h1>
+  <ul id="log-list">
+    <li>Loading logs...</li>
+  </ul>
 
-  function renderTransactionLog() {
-    const logs = JSON.parse(localStorage.getItem("transactionLogs")) || [];
-    logList.innerHTML = "";
+  <script>
+    const logList = document.getElementById('log-list');
 
-    if (logs.length === 0) {
-      logList.innerHTML = "<li>No transactions yet.</li>";
-      return;
-    }
+    function renderTransactionLog() {
+      logList.innerHTML = "";
+      const accounts = JSON.parse(localStorage.getItem('accounts')) || {};
+      let allLogs = [];
 
-    logs.forEach(l => {
-      const li = document.createElement("li");
-      let text = "";
-
-      switch(l.type) {
-        case "deposit":
-          text = `[Deposit] ${l.user} deposited ${l.amount} coins`;
-          break;
-        case "withdraw":
-          text = `[Withdraw] ${l.user} requested ${l.amount} coins`;
-          if(l.by) text += ` (Username: ${l.by})`;
-          break;
-        case "admin-add":
-          text = `[Admin Add] ${l.by} added ${l.amount} coins to ${l.user}`;
-          break;
-        case "admin-remove":
-          text = `[Admin Remove] ${l.by} removed ${l.amount} coins from ${l.user}`;
-          break;
-        default:
-          text = `[Other] ${JSON.stringify(l)}`;
+      // Gather logs from all users
+      for (const username in accounts) {
+        const userLogs = accounts[username].transactionLog || [];
+        userLogs.forEach(log => {
+          allLogs.push({ username, ...log });
+        });
       }
 
-      const date = new Date(l.timestamp).toLocaleString();
-      li.textContent = `${date} - ${text}`;
-      logList.appendChild(li);
-    });
-  }
+      if (allLogs.length === 0) {
+        logList.innerHTML = "<li>No transactions yet.</li>";
+        return;
+      }
 
-  // Render logs immediately on page load
-  renderTransactionLog();
-</script>
+      // Sort by timestamp ascending
+      allLogs.sort((a, b) => new Date(a.time) - new Date(b.time));
 
+      allLogs.forEach(l => {
+        const li = document.createElement("li");
+        let text = `[${l.time}] ${l.username}: ${l.type} - ${l.amount} coins`;
+        if (l.extra) text += ` (${l.extra})`;
+        li.textContent = text;
+        logList.appendChild(li);
+      });
+    }
+
+    // Render logs immediately
+    renderTransactionLog();
+  </script>
+</body>
+</html>
