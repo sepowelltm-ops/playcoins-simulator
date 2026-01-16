@@ -12,6 +12,7 @@
   </header>
 
   <section class="controls">
+    <input id="username" placeholder="Enter your username" />
     <input id="amount" type="number" placeholder="Amount" />
     <button id="deposit-btn">Deposit</button>
     <button id="withdraw-btn">Withdraw</button>
@@ -34,24 +35,21 @@
 
   <script src="script.js"></script>
   <script>
+    // ----------------------------
     // INDEX.HTML SPECIFIC LOGIC
+    // ----------------------------
 
-    // Get elements
     const balanceEl = document.getElementById('balance');
     const depositBtn = document.getElementById('deposit-btn');
     const withdrawBtn = document.getElementById('withdraw-btn');
     const amountEl = document.getElementById('amount');
+    const usernameEl = document.getElementById('username');
     const logEl = document.getElementById('log');
 
-    // Initialize balance
-    let balance = Number(localStorage.getItem('playCoins')) || 5;
-    updateBalance();
+    // Load saved username from localStorage
+    usernameEl.value = localStorage.getItem('username') || "";
 
-    function updateBalance() {
-      balanceEl.textContent = `Coins: ${balance}`;
-      localStorage.setItem('playCoins', balance);
-    }
-
+    // Add a log entry
     function addLog(message) {
       const p = document.createElement('p');
       p.textContent = message;
@@ -60,24 +58,58 @@
 
     // Deposit coins
     depositBtn.addEventListener('click', () => {
+      const username = usernameEl.value.trim() || "Unknown";
       const amount = Number(amountEl.value);
       if (!amount || amount <= 0) return alert("Enter a valid amount");
+
+      // Save username in localStorage
+      localStorage.setItem('username', username);
+
       balance += amount;
-      updateBalance();
-      addLog(`Deposited ${amount} coins`);
+      updateBalanceDisplay();
+      addLog(`Deposited ${amount} coins (User: ${username})`);
+
+      // Add to transaction log
+      const time = new Date().toLocaleString();
+      const transactionLog = JSON.parse(localStorage.getItem('transactionLog')) || [];
+      transactionLog.push({ type: "Deposit", amount, time });
+      localStorage.setItem('transactionLog', JSON.stringify(transactionLog));
+
       amountEl.value = '';
     });
 
     // Withdraw coins
     withdrawBtn.addEventListener('click', () => {
+      const username = usernameEl.value.trim() || "Unknown";
       const amount = Number(amountEl.value);
       if (!amount || amount <= 0) return alert("Enter a valid amount");
       if (amount > balance) return alert("Not enough coins");
+
+      // Save username in localStorage
+      localStorage.setItem('username', username);
+
       balance -= amount;
-      updateBalance();
-      addLog(`Withdrew ${amount} coins`);
+      updateBalanceDisplay();
+      addLog(`Withdrew ${amount} coins (User: ${username})`);
+
+      // Add to transaction log
+      const time = new Date().toLocaleString();
+      const transactionLog = JSON.parse(localStorage.getItem('transactionLog')) || [];
+      transactionLog.push({ type: "Withdraw", amount, time });
+      localStorage.setItem('transactionLog', JSON.stringify(transactionLog));
+
       amountEl.value = '';
     });
+
+    // Update balance display
+    function updateBalanceDisplay() {
+      balanceEl.textContent = `Coins: ${balance}`;
+      localStorage.setItem('playCoins', balance);
+    }
+
+    // Initialize balance display
+    updateBalanceDisplay();
   </script>
 </body>
 </html>
+
