@@ -196,12 +196,15 @@
         pendingDepositsEl.appendChild(li);
       });
 
+      pendingWithdrawalsEl.innerHTML = '';
+
       pendingWithdrawals.forEach((item, index) => {
         const li = document.createElement('li');
-        li.innerHTML = `[${item.time}] ${item.username} requests withdrawal of ${item.amount} coins. Link: <a href="${item.link}" target="_blank">${item.link}</a>`;
+        li.innerHTML = `[${item.time}] ${item.username} requests withdrawal of ${item.amount} coins. 
+          <a href="${item.link}" target="_blank">Gamepass</a>`;
         const approveBtn = document.createElement('button');
         approveBtn.textContent = "Approve";
-        approveBtn.addEventListener('click', () => approveWithdraw(index));
+        approveBtn.onclick = () => approveWithdraw(index);
         li.appendChild(approveBtn);
         pendingWithdrawalsEl.appendChild(li);
       });
@@ -220,8 +223,14 @@
 
     function approveWithdraw(index) {
       const item = pendingWithdrawals[index];
-      accounts[item.username].balance -= item.amount;
-      addTransaction(item.username, "Withdrawal (Approved)", item.amount);
+      accounts[item.username].balance += item.amount;
+      addTransaction(item.username, "Deposit (Approved)", item.amount);
+      
+      if (item.username === currentUser) {
+        localStorage.setItem('playCoins', accounts[item.username].balance);
+        balance = accounts[item.username].balance;
+      }
+
       pendingWithdrawals.splice(index, 1);
       localStorage.setItem('pendingWithdrawals', JSON.stringify(pendingWithdrawals));
       localStorage.setItem('accounts', JSON.stringify(accounts));
@@ -279,6 +288,13 @@
       accounts[targetUser].balance += amount;
       addTransaction(targetUser, amount > 0 ? "Admin Add" : "Admin Remove", amount);
       localStorage.setItem('accounts', JSON.stringify(accounts));
+      
+      if (targetUser === currentUser) {
+        localStorage.setItem('playCoins', accounts[targetUser].balance);
+        balance = accounts[targetUser].balance;
+        updateBalanceDisplay();
+      }
+
 
       alert(`${amount > 0 ? "Added" : "Removed"} ${Math.abs(amount)} coins for ${targetUser}`);
       manualUsernameEl.value = '';
