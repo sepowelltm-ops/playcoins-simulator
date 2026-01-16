@@ -59,21 +59,57 @@
     </ul>
   </section>
 
-  <!-- Admin Panel -->
-  <section class="admin-section" id="admin-panel" style="display:none;">
-    <h2>Admin Panel (FF2DMD)</h2>
+  // ----------------------------
+  // ADMIN: ADD / REMOVE COINS
+  // ----------------------------
+  const manualAddBtn = document.getElementById("manual-add-btn");
 
-    <h3>Pending Deposits</h3>
-    <ul id="pending-deposits"></ul>
+  manualAddBtn.addEventListener("click", () => {
+    if (currentUser !== "FF2DMD") {
+      alert("Only FF2DMD can use this panel");
+      return;
+    }
 
-    <h3>Pending Withdrawals</h3>
-    <ul id="pending-withdrawals"></ul>
+    const targetUser = document.getElementById("manual-username").value.trim();
+    const amount = Number(document.getElementById("manual-amount").value);
 
-    <h3>Add / Remove Coins</h3>
-    <input id="manual-username" placeholder="Username" />
-    <input id="manual-amount" type="number" placeholder="Amount (+ or -)" />
-    <button id="manual-add-btn">Apply Coins</button>
-  </section>
+    if (!targetUser || isNaN(amount) || amount === 0) {
+      alert("Enter a valid username and amount");
+      return;
+    }
+
+    if (!accounts[targetUser]) {
+      alert("User does not exist");
+      return;
+    }
+
+    // Apply coins
+    accounts[targetUser].balance += amount;
+
+    // Log transaction
+    addTransaction(
+      targetUser,
+      amount > 0 ? "Admin Add" : "Admin Remove",
+      amount
+    );
+
+    // Save
+    localStorage.setItem("accounts", JSON.stringify(accounts));
+
+    // Update UI if admin edited self
+    if (targetUser === currentUser) {
+      updateBalanceDisplay();
+      renderTransactionLog();
+    }
+
+    alert(
+      `${amount > 0 ? "Added" : "Removed"} ${Math.abs(amount)} coins for ${targetUser}`
+    );
+
+    document.getElementById("manual-username").value = "";
+    document.getElementById("manual-amount").value = "";
+  });
+
 
   <!-- Transaction Log -->
   <div id="log"></div>
