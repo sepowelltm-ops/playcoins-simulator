@@ -1,1 +1,38 @@
-e
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>PlayCoins Simulator</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>PlayCoins Simulator</h1>
+    <div id="balance">Coins: 5</div>
+  </header>
+
+  <section class="user-controls">
+    <input id="username" placeholder="Enter your username" />
+    <input id="amount" type="number" placeholder="Amount" />
+    <button id="deposit-btn">Deposit</button>
+    <button id="withdraw-btn">Withdraw</button>
+  </section>
+
+  <section class="games">
+    <h2>Games</h2>
+    <ul>
+      <li><a href="games/blackjack.html">Blackjack</a></li>
+      <li><a href="games/crash.html">Crash</a></li>
+      <li><a href="games/crossroad.html">Crossroad</a></li>
+      <li><a href="games/dice.html">Dice</a></li>
+      <li><a href="games/mines.html">Mines</a></li>
+      <li><a href="games/cases.html">Cases</a></li>
+      <li><a href="games/upgrader.html">Upgrader</a></li>
+    </ul>
+  </section>
+
+  <div id="log"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
