@@ -1,1 +1,76 @@
-e
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Cases - PlayCoins</title>
+  <link rel="stylesheet" href="../style.css" />
+</head>
+<body>
+  <header>
+    <h1>Cases</h1>
+    <div id="balance">Coins: 5</div>
+  </header>
+
+  <section class="game-controls">
+    <input id="username" placeholder="Enter your username" />
+    <input id="bet" type="number" placeholder="Bet Amount" />
+    <button id="open-btn">Open Case</button>
+  </section>
+
+  <section id="case-log">
+    <p>Enter your bet and open a case!</p>
+  </section>
+
+  <a href="../index.html">Back to Main Menu</a>
+
+  <script src="../script.js"></script>
+  <script>
+    const openBtn = document.getElementById("open-btn");
+    const caseLog = document.getElementById("case-log");
+    const balanceEl = document.getElementById("balance");
+    const usernameEl = document.getElementById("username");
+    const betEl = document.getElementById("bet");
+
+    function updateBalanceDisplay() {
+      balanceEl.textContent = `Coins: ${balance}`;
+    }
+
+    // Possible rewards (weighted slightly in favor of house)
+    const rewards = [
+      { name: "Common Item", chance: 0.5, multiplier: 1.2 },
+      { name: "Uncommon Item", chance: 0.3, multiplier: 1.5 },
+      { name: "Rare Item", chance: 0.15, multiplier: 2 },
+      { name: "Legendary Item", chance: 0.05, multiplier: 5 }
+    ];
+
+    function pickReward() {
+      const roll = Math.random();
+      let cumulative = 0;
+      for (const r of rewards) {
+        cumulative += r.chance;
+        if (roll <= cumulative) return r;
+      }
+      return rewards[0]; // fallback
+    }
+
+    openBtn.addEventListener("click", () => {
+      const username = usernameEl.value.trim() || "Unknown";
+      const bet = Number(betEl.value);
+      if (bet <= 0 || isNaN(bet)) return alert("Enter a valid bet amount.");
+      if (bet > balance) return alert("Not enough coins.");
+
+      balance -= bet;
+
+      const reward = pickReward();
+      const winnings = Math.floor(bet * reward.multiplier);
+      balance += winnings;
+
+      caseLog.innerHTML = `<p>${username} opened a case and got <b>${reward.name}</b> for ${winnings} coins!</p>`;
+      updateBalanceDisplay();
+      betEl.value = "";
+    });
+
+    updateBalanceDisplay();
+  </script>
+</body>
+</html>
