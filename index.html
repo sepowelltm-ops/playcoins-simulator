@@ -1,335 +1,166 @@
-  <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>PlayCoins Simulator</title>
-  <link rel="stylesheet" href="style.css" />
+    <meta charset="UTF-8">
+    <title>Casino</title>
+    <style>
+        body {
+            background: #0f0f0f;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        input, button {
+            padding: 6px;
+            margin: 4px;
+        }
+        .hidden { display: none; }
+        .box {
+            border: 1px solid #333;
+            padding: 10px;
+            margin: 10px 0;
+        }
+    </style>
 </head>
 <body>
-  <header>
-    <h1>PlayCoins Simulator</h1>
-    <div id="balance">Coins: 5</div>
-    <div id="logged-in-user">Not logged in</div>
-  </header>
 
-  <!-- Login / Register -->
-  <section class="auth-section">
-    <h2>Register / Login</h2>
-    <!-- Register -->
-    <input id="reg-username" placeholder="Username" />
-    <input id="reg-password" type="password" placeholder="Password" />
-    <button id="register-btn">Register</button>
-    <br><br>
-    <!-- Login -->
-    <input id="login-username" placeholder="Username" />
-    <input id="login-password" type="password" placeholder="Password" />
-    <button id="login-btn">Login</button>
-  </section>
+<h1>Casino</h1>
 
-  <!-- Deposit / Withdraw -->
-  <section class="controls">
-    <input id="amount" type="number" placeholder="Amount" />
-    <button id="deposit-btn">Deposit</button>
+<!-- LOGIN -->
+<div id="loginBox" class="box">
+    <h2>Login / Register</h2>
+    <input id="username" placeholder="Username"><br>
+    <input id="password" type="password" placeholder="Password"><br>
+    <button onclick="login()">Login</button>
+    <button onclick="register()">Register</button>
+    <p id="loginMsg"></p>
+</div>
 
-  <div id="withdraw-container">
-    <p>To withdraw coins: Make a Gamepass with the amount of coins you entered and paste the link below.</p>
-    <input id="withdraw-link" placeholder="Paste your Roblox Gamepass link here" />
-    <button id="withdraw-btn">Request Withdraw</button>
-  </div>
+<!-- MAIN -->
+<div id="mainBox" class="hidden box">
+    <h2>Welcome, <span id="userDisplay"></span></h2>
+    <p>Coins: <span id="coinDisplay">0</span></p>
 
-  </section>
+    <button onclick="logout()">Logout</button>
 
-  <!-- Games -->
-  <section class="games">
-    <h2>Games</h2>
-    <ul>
-      <li><a href="games/blackjack.html">Blackjack</a></li>
-      <li><a href="games/crash.html">Crash</a></li>
-      <li><a href="games/crossroad.html">Crossroad</a></li>
-      <li><a href="games/dice.html">Dice</a></li>
-      <li><a href="games/mines.html">Mines</a></li>
-      <li><a href="games/cases.html">Cases</a></li>
-      <li><a href="games/upgrader.html">Upgrader</a></li>
-    </ul>
-  </section>
+    <!-- ADMIN PANEL -->
+    <div id="adminPanel" class="hidden box">
+        <h3>Admin Panel</h3>
+        <input id="adminTarget" placeholder="Target username"><br>
+        <input id="adminAmount" type="number" placeholder="Coins (+ or -)"><br>
+        <button onclick="adminUpdateCoins()">Apply</button>
+        <p id="adminMsg"></p>
+    </div>
+</div>
 
-  <!-- Admin Panel (FF2DMD only) -->
-  <section class="admin-section" id="admin-panel" style="display:none;">
-    <h2>Admin Panel (FF2DMD)</h2>
+<script>
+/* ---------- STORAGE HELPERS ---------- */
+function getUsers() {
+    return JSON.parse(localStorage.getItem("users") || "{}");
+}
+function saveUsers(users) {
+    localStorage.setItem("users", JSON.stringify(users));
+}
 
-    <!-- Pending Deposits -->
-    <h3>Pending Deposits</h3>
-    <ul id="pending-deposits"></ul>
+/* ---------- AUTH ---------- */
+let currentUser = null;
 
-    <!-- Pending Withdrawals -->
-    <h3>Pending Withdrawals</h3>
-    <ul id="pending-withdrawals"></ul>
+function register() {
+    const u = username.value.trim();
+    const p = password.value;
 
-    <!-- Manual Add/Remove Coins -->
-    <h3>Add/Remove Coins Manually</h3>
-    <input id="manual-username" placeholder="Username" />
-    <input id="manual-amount" type="number" placeholder="Amount (+ or -)" />
-    <button id="manual-add-btn">Apply Coins</button>
-  </section>
-
-  <!-- Transaction Log -->
-  <div id="log"></div>
-
-  <script src="script.js"></script>
-  <script>
-    // ----------------------------
-    // LOGIN / REGISTER SYSTEM
-    // ----------------------------
-    const registerBtn = document.getElementById('register-btn');
-    const loginBtn = document.getElementById('login-btn');
-    const regUsernameEl = document.getElementById('reg-username');
-    const regPasswordEl = document.getElementById('reg-password');
-    const loginUsernameEl = document.getElementById('login-username');
-    const loginPasswordEl = document.getElementById('login-password');
-    const loggedInUserEl = document.getElementById('logged-in-user');
-
-    let accounts = JSON.parse(localStorage.getItem('accounts')) || {};
-    let currentUser = localStorage.getItem('currentUser') || null;
-
-    function updateLoggedInDisplay() {
-      loggedInUserEl.textContent = currentUser ? `Logged in as: ${currentUser}` : "Not logged in";
-
-      // Show admin panel only for FF2DMD
-      const adminPanel = document.getElementById('admin-panel');
-      adminPanel.style.display = (currentUser === "FF2DMD") ? "block" : "none";
+    if (!u || !p) {
+        loginMsg.textContent = "Missing fields";
+        return;
     }
 
-    // Register
-    registerBtn.addEventListener('click', () => {
-      const username = regUsernameEl.value.trim();
-      const password = regPasswordEl.value.trim();
-      if (!username || !password) return alert("Enter both username and password");
-      if (accounts[username]) return alert("Username already exists");
-
-      accounts[username] = { password, balance: 5, transactionLog: [] };
-      localStorage.setItem('accounts', JSON.stringify(accounts));
-      alert(`Account ${username} registered! You can now login.`);
-      regUsernameEl.value = '';
-      regPasswordEl.value = '';
-    });
-
-    // Login
-    loginBtn.addEventListener('click', () => {
-      const username = loginUsernameEl.value.trim();
-      const password = loginPasswordEl.value.trim();
-      if (!username || !password) return alert("Enter both username and password");
-      if (!accounts[username]) return alert("Account does not exist");
-      if (accounts[username].password !== password) return alert("Incorrect password");
-
-      currentUser = username;
-      localStorage.setItem('currentUser', currentUser);
-      updateLoggedInDisplay();
-      alert(`Logged in as ${username}`);
-      loginUsernameEl.value = '';
-      loginPasswordEl.value = '';
-      updateBalanceDisplay();
-      renderTransactionLog();
-      renderPendingLists();
-    });
-
-    updateLoggedInDisplay();
-
-    // ----------------------------
-    // BALANCE & TRANSACTIONS
-    // ----------------------------
-    const balanceEl = document.getElementById('balance');
-    const amountEl = document.getElementById('amount');
-    const logEl = document.getElementById('log');
-
-    function getUserData(username = currentUser) {
-      if (!username) return null;
-      accounts = JSON.parse(localStorage.getItem('accounts')) || {};
-      return accounts[username];
+    const users = getUsers();
+    if (users[u]) {
+        loginMsg.textContent = "User already exists";
+        return;
     }
 
-    function updateBalanceDisplay() {
-      const userData = getUserData();
-      balanceEl.textContent = `Coins: ${userData ? userData.balance : 0}`;
+    users[u] = {
+        password: p,
+        coins: 0
+    };
+    saveUsers(users);
+
+    loginMsg.textContent = "Registered. You can login.";
+}
+
+function login() {
+    const u = username.value.trim();
+    const p = password.value;
+
+    const users = getUsers();
+    if (!users[u] || users[u].password !== p) {
+        loginMsg.textContent = "Invalid login";
+        return;
     }
 
-    function renderTransactionLog() {
-      const userData = getUserData();
-      if (!userData) return;
-      logEl.innerHTML = '';
-      userData.transactionLog.forEach(t => {
-        const p = document.createElement('p');
-        p.textContent = `[${t.time}] ${t.type}: ${t.amount} coins (User: ${currentUser})`;
-        logEl.prepend(p);
-      });
+    currentUser = u;
+    localStorage.setItem("currentUser", u);
+    showMain();
+}
+
+function logout() {
+    localStorage.removeItem("currentUser");
+    location.reload();
+}
+
+/* ---------- MAIN UI ---------- */
+function showMain() {
+    const users = getUsers();
+    if (!users[currentUser]) return;
+
+    loginBox.classList.add("hidden");
+    mainBox.classList.remove("hidden");
+
+    userDisplay.textContent = currentUser;
+    coinDisplay.textContent = users[currentUser].coins;
+
+    // ADMIN CHECK
+    if (currentUser === "FF2DMD") {
+        adminPanel.classList.remove("hidden");
+    } else {
+        adminPanel.classList.add("hidden");
+    }
+}
+
+/* ---------- ADMIN ---------- */
+function adminUpdateCoins() {
+    if (currentUser !== "FF2DMD") return;
+
+    const target = adminTarget.value.trim();
+    const amount = Number(adminAmount.value);
+
+    const users = getUsers();
+    if (!users[target] || isNaN(amount)) {
+        adminMsg.textContent = "Invalid input";
+        return;
     }
 
-    function addTransaction(username, type, amount) {
-      const userData = getUserData(username);
-      if (!userData) return;
-      const time = new Date().toLocaleString();
-      userData.transactionLog.push({ type, amount, time });
-      accounts[username] = userData;
-      localStorage.setItem('accounts', JSON.stringify(accounts));
-      if (username === currentUser) renderTransactionLog();
+    users[target].coins += amount;
+    if (users[target].coins < 0) users[target].coins = 0;
+
+    saveUsers(users);
+
+    if (target === currentUser) {
+        coinDisplay.textContent = users[target].coins;
     }
 
-    // ----------------------------
-    // PENDING DEPOSITS / WITHDRAWALS
-    // ----------------------------
-    let pendingDeposits = JSON.parse(localStorage.getItem('pendingDeposits')) || [];
-    let pendingWithdrawals = JSON.parse(localStorage.getItem('pendingWithdrawals')) || [];
+    adminMsg.textContent = "Coins updated";
+}
 
-    function renderPendingLists() {
-      if (currentUser !== "FF2DMD") return;
-
-      const pendingDepositsEl = document.getElementById('pending-deposits');
-      const pendingWithdrawalsEl = document.getElementById('pending-withdrawals');
-
-      pendingDepositsEl.innerHTML = '';
-      pendingDeposits.forEach((item, index) => {
-        const li = document.createElement('li');
-        li.textContent = `[${item.time}] ${item.username} wants to deposit ${item.amount} coins `;
-        const approveBtn = document.createElement('button');
-        approveBtn.textContent = "Approve";
-        approveBtn.addEventListener('click', () => approveDeposit(index));
-        li.appendChild(approveBtn);
-        pendingDepositsEl.appendChild(li);
-      });
-
-      pendingWithdrawalsEl.innerHTML = '';
-
-      pendingWithdrawals.forEach((item, index) => {
-        const li = document.createElement('li');
-        li.innerHTML = `[${item.time}] ${item.username} requests withdrawal of ${item.amount} coins. 
-          <a href="${item.link}" target="_blank">Gamepass</a>`;
-        const approveBtn = document.createElement('button');
-        approveBtn.textContent = "Approve";
-        approveBtn.onclick = () => approveWithdraw(index);
-        li.appendChild(approveBtn);
-        pendingWithdrawalsEl.appendChild(li);
-      });
+/* ---------- AUTO LOGIN ---------- */
+window.onload = () => {
+    const saved = localStorage.getItem("currentUser");
+    if (saved) {
+        currentUser = saved;
+        showMain();
     }
+};
+</script>
 
-      function approveDeposit(index) {
-        const item = pendingDeposits[index];
-      
-        accounts[item.username].balance += item.amount;
-        addTransaction(item.username, "Deposit (Approved)", item.amount);
-
-        // 🔑 SYNC GLOBAL BALANCE IF USER IS LOGGED IN
-        if (item.username === currentUser) {
-          balance = accounts[item.username].balance;
-          localStorage.setItem('playCoins', balance);
-        }
-
-        pendingDeposits.splice(index, 1);
-        localStorage.setItem('pendingDeposits', JSON.stringify(pendingDeposits));
-        localStorage.setItem('accounts', JSON.stringify(accounts));
-
-        renderPendingLists();
-        updateBalanceDisplay();
-      }
-
-
-      function approveWithdraw(index) {
-        const item = pendingWithdrawals[index];
-
-        accounts[item.username].balance -= item.amount;
-        addTransaction(item.username, "Withdrawal (Approved)", item.amount);
-
-        // 🔑 SYNC GLOBAL BALANCE IF USER IS LOGGED IN
-        if (item.username === currentUser) {
-          balance = accounts[item.username].balance;
-          localStorage.setItem('playCoins', balance);
-        }
-
-        pendingWithdrawals.splice(index, 1);
-        localStorage.setItem('pendingWithdrawals', JSON.stringify(pendingWithdrawals));
-        localStorage.setItem('accounts', JSON.stringify(accounts));
-
-        renderPendingLists();
-        updateBalanceDisplay();
-      }
-
-      pendingWithdrawals.splice(index, 1);
-      localStorage.setItem('pendingWithdrawals', JSON.stringify(pendingWithdrawals));
-      localStorage.setItem('accounts', JSON.stringify(accounts));
-      renderPendingLists();
-      updateBalanceDisplay();
-    }
-
-    // Deposit request
-    document.getElementById('deposit-btn').addEventListener('click', () => {
-      if (!currentUser) return alert("Please login first!");
-      const amount = Number(amountEl.value);
-      if (!amount || amount <= 0) return alert("Enter valid amount");
-
-      pendingDeposits.push({ username: currentUser, amount, time: new Date().toLocaleString() });
-      localStorage.setItem('pendingDeposits', JSON.stringify(pendingDeposits));
-      alert("Deposit sent for admin approval!");
-      amountEl.value = '';
-      renderPendingLists();
-    });
-
-    // Withdraw request
-    document.getElementById('withdraw-btn').addEventListener('click', () => {
-      const withdrawUsername = document.getElementById('withdraw-username').value.trim();
-      const amount = Number(amountEl.value);
-
-      if (!withdrawUsername) return alert("Enter your username in the text box");
-      if (!amount || amount <= 0) return alert("Enter valid amount");
-
-      pendingWithdrawals.push({ username: withdrawUsername, amount, time: new Date().toLocaleString() });
-      localStorage.setItem('pendingWithdrawals', JSON.stringify(pendingWithdrawals));
-
-      alert(`Withdrawal request submitted! Please wait for admin approval.`);
-      amountEl.value = '';
-      document.getElementById('withdraw-username').value = '';
-      renderPendingLists();
-    });
-
-    renderPendingLists();
-
-    // ----------------------------
-    // MANUAL ADD/REMOVE COINS
-    // ----------------------------
-    const manualAddBtn = document.getElementById('manual-add-btn');
-    const manualUsernameEl = document.getElementById('manual-username');
-    const manualAmountEl = document.getElementById('manual-amount');
-
-    manualAddBtn.addEventListener('click', () => {
-      if (currentUser !== "FF2DMD") return alert("Only FF2DMD can use this panel");
-
-      const targetUser = manualUsernameEl.value.trim();
-      const amount = Number(manualAmountEl.value);
-      if (!targetUser || !amount) return alert("Enter valid username and amount");
-      if (!accounts[targetUser]) return alert("User does not exist");
-
-      accounts[targetUser].balance += amount;
-      addTransaction(targetUser, amount > 0 ? "Admin Add" : "Admin Remove", amount);
-      localStorage.setItem('accounts', JSON.stringify(accounts));
-
-      if (targetUser === currentUser) {
-        balance = accounts[targetUser].balance;
-        localStorage.setItem('playCoins', balance);
-      }
-      
-      if (targetUser === currentUser) {
-        localStorage.setItem('playCoins', accounts[targetUser].balance);
-        balance = accounts[targetUser].balance;
-        updateBalanceDisplay();
-      }
-
-
-      alert(`${amount > 0 ? "Added" : "Removed"} ${Math.abs(amount)} coins for ${targetUser}`);
-      manualUsernameEl.value = '';
-      manualAmountEl.value = '';
-      updateBalanceDisplay();
-      renderTransactionLog();
-    });
-
-    updateBalanceDisplay();
-    renderTransactionLog();
-  </script>
 </body>
 </html>
