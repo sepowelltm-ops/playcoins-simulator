@@ -1,1 +1,103 @@
-e
+/* Global Reset */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Body */
+body {
+  font-family: Arial, sans-serif;
+  background-color: #0e0e0e;
+  color: #ffffff;
+  text-align: center;
+  padding: 20px;
+}
+
+/* Header */
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #111;
+  padding: 15px 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+header h1 {
+  font-size: 24px;
+}
+
+#balance {
+  font-weight: bold;
+  font-size: 18px;
+}
+
+/* User Controls */
+.user-controls {
+  margin-bottom: 20px;
+}
+
+.user-controls input {
+  padding: 8px;
+  margin: 5px;
+  width: 150px;
+  border-radius: 5px;
+  border: none;
+}
+
+.user-controls button {
+  padding: 8px 12px;
+  margin: 5px;
+  border: none;
+  border-radius: 5px;
+  background-color: #1e90ff;
+  color: white;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.user-controls button:hover {
+  opacity: 0.85;
+}
+
+/* Games Section */
+.games {
+  margin-bottom: 20px;
+}
+
+.games ul {
+  list-style: none;
+}
+
+.games li {
+  margin: 8px 0;
+}
+
+.games a {
+  color: #1e90ff;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.games a:hover {
+  text-decoration: underline;
+}
+
+/* Log Section */
+#log {
+  margin-top: 20px;
+  max-height: 200px;
+  overflow-y: auto;
+  text-align: left;
+  border: 1px solid #333;
+  padding: 10px;
+  border-radius: 6px;
+  background-color: #111;
+}
+
+#log p {
+  margin: 4px 0;
+  font-size: 14px;
+}
