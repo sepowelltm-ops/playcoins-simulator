@@ -313,17 +313,24 @@
     });
 
     // ----------------------------
-    // CLEAR LOGS BUTTON
+    // CLEAR LOGS BUTTON (ONE-TIME)
     // ----------------------------
+    let logsCleared = false;
     const clearLogsBtn = document.getElementById('clear-logs-btn');
     clearLogsBtn.addEventListener('click', () => {
       if (currentUser !== "FF2DMD") return alert("Only FF2DMD can clear logs");
-      Object.keys(accounts).forEach(user => {
-        accounts[user].transactionLog = [];
-      });
-      saveAccounts();
-      renderTransactionLog();
-      alert("All transaction logs cleared!");
+
+      if (!logsCleared) {
+        Object.keys(accounts).forEach(user => {
+          accounts[user].transactionLog = [];
+        });
+        logsCleared = true;
+        saveAccounts();
+        renderTransactionLog();
+        alert("Transaction logs cleared! New transactions will appear normally.");
+      } else {
+        alert("Logs already cleared. New transactions will appear normally.");
+      }
     });
   </script>
 </body>
