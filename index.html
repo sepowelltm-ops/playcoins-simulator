@@ -30,7 +30,12 @@
   <section class="controls">
     <input id="amount" type="number" placeholder="Amount" />
     <button id="deposit-btn">Deposit</button>
-    <button id="withdraw-btn">Withdraw</button>
+
+    <div id="withdraw-container">
+      <p>To withdraw coins: Make a Gamepass with the amount of coins you entered and put your username in the text box below.</p>
+      <input id="withdraw-username" placeholder="Your Username (for withdraw)" />
+      <button id="withdraw-btn">Request Withdraw</button>
+    </div>
   </section>
 
   <!-- Games -->
@@ -90,11 +95,7 @@
 
       // Show admin panel only for FF2DMD
       const adminPanel = document.getElementById('admin-panel');
-      if (currentUser === "FF2DMD") {
-        adminPanel.style.display = "block";
-      } else {
-        adminPanel.style.display = "none";
-      }
+      adminPanel.style.display = (currentUser === "FF2DMD") ? "block" : "none";
     }
 
     // Register
@@ -243,14 +244,18 @@
 
     // Withdraw request
     document.getElementById('withdraw-btn').addEventListener('click', () => {
-      if (!currentUser) return alert("Please login first!");
+      const withdrawUsername = document.getElementById('withdraw-username').value.trim();
       const amount = Number(amountEl.value);
+
+      if (!withdrawUsername) return alert("Enter your username in the text box");
       if (!amount || amount <= 0) return alert("Enter valid amount");
 
-      pendingWithdrawals.push({ username: currentUser, amount, time: new Date().toLocaleString() });
+      pendingWithdrawals.push({ username: withdrawUsername, amount, time: new Date().toLocaleString() });
       localStorage.setItem('pendingWithdrawals', JSON.stringify(pendingWithdrawals));
-      alert("Withdrawal request sent for admin approval!");
+
+      alert(`Withdrawal request submitted! Please wait for admin approval.`);
       amountEl.value = '';
+      document.getElementById('withdraw-username').value = '';
       renderPendingLists();
     });
 
