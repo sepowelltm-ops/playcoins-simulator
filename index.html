@@ -11,8 +11,7 @@
     <div id="balance">Coins: 5</div>
   </header>
 
-  <section class="user-controls">
-    <input id="username" placeholder="Enter your username" />
+  <section class="controls">
     <input id="amount" type="number" placeholder="Amount" />
     <button id="deposit-btn">Deposit</button>
     <button id="withdraw-btn">Withdraw</button>
@@ -34,5 +33,51 @@
   <div id="log"></div>
 
   <script src="script.js"></script>
+  <script>
+    // INDEX.HTML SPECIFIC LOGIC
+
+    // Get elements
+    const balanceEl = document.getElementById('balance');
+    const depositBtn = document.getElementById('deposit-btn');
+    const withdrawBtn = document.getElementById('withdraw-btn');
+    const amountEl = document.getElementById('amount');
+    const logEl = document.getElementById('log');
+
+    // Initialize balance
+    let balance = Number(localStorage.getItem('playCoins')) || 5;
+    updateBalance();
+
+    function updateBalance() {
+      balanceEl.textContent = `Coins: ${balance}`;
+      localStorage.setItem('playCoins', balance);
+    }
+
+    function addLog(message) {
+      const p = document.createElement('p');
+      p.textContent = message;
+      logEl.prepend(p);
+    }
+
+    // Deposit coins
+    depositBtn.addEventListener('click', () => {
+      const amount = Number(amountEl.value);
+      if (!amount || amount <= 0) return alert("Enter a valid amount");
+      balance += amount;
+      updateBalance();
+      addLog(`Deposited ${amount} coins`);
+      amountEl.value = '';
+    });
+
+    // Withdraw coins
+    withdrawBtn.addEventListener('click', () => {
+      const amount = Number(amountEl.value);
+      if (!amount || amount <= 0) return alert("Enter a valid amount");
+      if (amount > balance) return alert("Not enough coins");
+      balance -= amount;
+      updateBalance();
+      addLog(`Withdrew ${amount} coins`);
+      amountEl.value = '';
+    });
+  </script>
 </body>
 </html>
