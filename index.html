@@ -6,286 +6,256 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header>
-    <h1>PlayCoins Simulator</h1>
-    <div id="balance">Coins: 5</div>
-    <div id="logged-in-user">Not logged in</div>
-  </header>
 
-  <!-- Login / Register -->
-  <section class="auth-section">
-    <h2>Register / Login</h2>
-    <input id="reg-username" placeholder="Username" />
-    <input id="reg-password" type="password" placeholder="Password" />
-    <button id="register-btn">Register</button>
-    <br><br>
-    <input id="login-username" placeholder="Username" />
-    <input id="login-password" type="password" placeholder="Password" />
-    <button id="login-btn">Login</button>
-  </section>
+<header>
+  <h1>PlayCoins Simulator</h1>
+  <div id="balance">Coins: 0</div>
+  <div id="logged-in-user">Not logged in</div>
+</header>
 
-  <!-- Deposit / Withdraw -->
-  <section class="controls">
-    <input id="amount" type="number" placeholder="Amount" />
-    <button id="deposit-btn">Deposit</button>
+<section class="auth-section">
+  <h2>Register</h2>
+  <input id="reg-username" placeholder="Username">
+  <input id="reg-password" type="password" placeholder="Password">
+  <button id="register-btn">Register</button>
 
-    <div id="withdraw-container">
-      <p>To withdraw coins: Make a Gamepass with the amount of coins you entered and paste the link below.</p>
-      <input id="withdraw-link" placeholder="Paste your Roblox Gamepass link here" />
-      <button id="withdraw-btn">Request Withdraw</button>
-    </div>
-  </section>
+  <h2>Login</h2>
+  <input id="login-username" placeholder="Username">
+  <input id="login-password" type="password" placeholder="Password">
+  <button id="login-btn">Login</button>
+</section>
 
-  <!-- Games -->
-  <section class="games">
-    <h2>Games</h2>
-    <ul>
-      <li><a href="games/blackjack.html">Blackjack</a></li>
-      <li><a href="games/crash.html">Crash</a></li>
-      <li><a href="games/crossroad.html">Crossroad</a></li>
-      <li><a href="games/dice.html">Dice</a></li>
-      <li><a href="games/mines.html">Mines</a></li>
-      <li><a href="games/cases.html">Cases</a></li>
-      <li><a href="games/upgrader.html">Upgrader</a></li>
-    </ul>
-  </section>
+<section class="controls">
+  <input id="amount" type="number" placeholder="Amount">
 
-  <!-- Admin Panel (FF2DMD only) -->
-  <section class="admin-section" id="admin-panel" style="display:none;">
-    <h2>Admin Panel (FF2DMD)</h2>
+  <button id="deposit-btn">Deposit</button>
 
-    <!-- Pending Deposits -->
-    <h3>Pending Deposits</h3>
-    <ul id="pending-deposits"></ul>
+  <div>
+    <p>To withdraw: make a Roblox gamepass with the coin amount and paste the link.</p>
+    <input id="withdraw-link" placeholder="Gamepass link">
+    <button id="withdraw-btn">Request Withdraw</button>
+  </div>
+</section>
 
-    <!-- Pending Withdrawals -->
-    <h3>Pending Withdrawals</h3>
-    <ul id="pending-withdrawals"></ul>
+<section class="games">
+  <h2>Games</h2>
+  <ul>
+    <li><a href="games/blackjack.html">Blackjack</a></li>
+    <li><a href="games/crash.html">Crash</a></li>
+    <li><a href="games/crossroad.html">Crossroad</a></li>
+    <li><a href="games/dice.html">Dice</a></li>
+    <li><a href="games/mines.html">Mines</a></li>
+    <li><a href="games/cases.html">Cases</a></li>
+    <li><a href="games/upgrader.html">Upgrader</a></li>
+  </ul>
+</section>
 
-    <!-- Manual Add/Remove Coins -->
-    <h3>Add/Remove Coins Manually</h3>
-    <input id="manual-username" placeholder="Username" />
-    <input id="manual-amount" type="number" placeholder="Amount (+ or -)" />
-    <button id="manual-add-btn">Apply Coins</button>
+<section id="admin-panel" style="display:none;">
+  <h2>Admin Panel (FF2DMD)</h2>
 
-  </section>
+  <h3>Pending Deposits</h3>
+  <ul id="pending-deposits"></ul>
 
-  <!-- Transaction Log -->
-  <div id="log"></div>
+  <h3>Pending Withdrawals</h3>
+  <ul id="pending-withdrawals"></ul>
 
-  <script>
-    // ----------------------------
-    // GLOBAL VARIABLES
-    // ----------------------------
-    const registerBtn = document.getElementById('register-btn');
-    const loginBtn = document.getElementById('login-btn');
-    const regUsernameEl = document.getElementById('reg-username');
-    const regPasswordEl = document.getElementById('reg-password');
-    const loginUsernameEl = document.getElementById('login-username');
-    const loginPasswordEl = document.getElementById('login-password');
-    const loggedInUserEl = document.getElementById('logged-in-user');
-    const balanceEl = document.getElementById('balance');
-    const logEl = document.getElementById('log');
-    const amountEl = document.getElementById('amount');
+  <h3>Manual Coin Control</h3>
+  <input id="manual-username" placeholder="Username">
+  <input id="manual-amount" type="number" placeholder="+ or - amount">
+  <button id="manual-add-btn">Apply</button>
+</section>
 
-    let accounts = JSON.parse(localStorage.getItem('accounts')) || {};
-    let currentUser = localStorage.getItem('currentUser') || null;
+<h2>Transaction Log</h2>
+<div id="log"></div>
 
-    let pendingDeposits = JSON.parse(localStorage.getItem('pendingDeposits')) || [];
-    let pendingWithdrawals = JSON.parse(localStorage.getItem('pendingWithdrawals')) || [];
+<script>
+/* -------------------- STORAGE HELPERS -------------------- */
+function loadAccounts() {
+  return JSON.parse(localStorage.getItem("accounts")) || {};
+}
 
-    // ----------------------------
-    // UTILITY FUNCTIONS
-    // ----------------------------
-    function loadAccounts() { accounts = JSON.parse(localStorage.getItem('accounts')) || {}; return accounts; }
-    function saveAccounts() { localStorage.setItem('accounts', JSON.stringify(accounts)); }
-    function getUserData(username = currentUser) { loadAccounts(); return accounts[username] || null; }
+function saveAccounts(accounts) {
+  localStorage.setItem("accounts", JSON.stringify(accounts));
+}
 
-    function updateBalanceDisplay() {
-      const userData = getUserData();
-      balanceEl.textContent = `Coins: ${userData ? userData.balance : 0}`;
-    }
+function getCurrentUser() {
+  return localStorage.getItem("currentUser");
+}
 
-    function updateLoggedInDisplay() {
-      loggedInUserEl.textContent = currentUser ? `Logged in as: ${currentUser}` : "Not logged in";
-      document.getElementById('admin-panel').style.display = (currentUser === "FF2DMD") ? "block" : "none";
-    }
+function getUserData(username = getCurrentUser()) {
+  const accounts = loadAccounts();
+  return accounts[username] || null;
+}
 
-    updateLoggedInDisplay();
-    updateBalanceDisplay();
+/* -------------------- UI HELPERS -------------------- */
+function updateBalanceDisplay() {
+  const user = getUserData();
+  document.getElementById("balance").textContent =
+    `Coins: ${user ? user.balance : 0}`;
+}
 
-    // ----------------------------
-    // REGISTER / LOGIN
-    // ----------------------------
-    registerBtn.addEventListener('click', () => {
-      const username = regUsernameEl.value.trim();
-      const password = regPasswordEl.value.trim();
-      if (!username || !password) return alert("Enter both username and password");
-      if (accounts[username]) return alert("Username exists");
-      accounts[username] = { password, balance: 5, transactionLog: [] };
-      saveAccounts();
-      alert(`Account ${username} registered!`);
-      regUsernameEl.value = '';
-      regPasswordEl.value = '';
-    });
+function updateUserDisplay() {
+  const user = getCurrentUser();
+  document.getElementById("logged-in-user").textContent =
+    user ? `Logged in as: ${user}` : "Not logged in";
+  document.getElementById("admin-panel").style.display =
+    user === "FF2DMD" ? "block" : "none";
+}
 
-    loginBtn.addEventListener('click', () => {
-      const username = loginUsernameEl.value.trim();
-      const password = loginPasswordEl.value.trim();
-      if (!username || !password) return alert("Enter both username and password");
-      const userData = getUserData(username);
-      if (!userData) return alert("Account does not exist");
-      if (userData.password !== password) return alert("Incorrect password");
+/* -------------------- LOGGING -------------------- */
+function addTransaction(username, type, amount) {
+  const accounts = loadAccounts();
+  if (!accounts[username]) return;
 
-      currentUser = username;
-      localStorage.setItem('currentUser', currentUser);
-      updateLoggedInDisplay();
-      updateBalanceDisplay();
-      renderTransactionLog();
-      renderPendingLists();
-      loginUsernameEl.value = '';
-      loginPasswordEl.value = '';
-      alert(`Logged in as ${username}`);
-    });
+  accounts[username].transactionLog.push({
+    type,
+    amount,
+    time: new Date().toLocaleString()
+  });
 
-    // ----------------------------
-    // TRANSACTION LOGS
-    // ----------------------------
-    function addTransaction(username, type, amount, extra=null) {
-      const userData = getUserData(username);
-      if (!userData) return;
-      const time = new Date().toLocaleString();
-      userData.transactionLog.push({ type, amount, time, extra });
-      accounts[username] = userData;
-      saveAccounts();
-      renderTransactionLog();
-    }
+  saveAccounts(accounts);
+  if (username === getCurrentUser()) renderTransactionLog();
+}
 
-    function renderTransactionLog() {
-      const userData = getUserData();
-      if (!userData) return;
-      logEl.innerHTML = '';
-      userData.transactionLog.forEach(t => {
-        const p = document.createElement('p');
-        p.textContent = `[${t.time}] ${t.type}: ${t.amount} coins` + (t.extra ? ` (${t.extra})` : '');
-        logEl.prepend(p);
-      });
-    }
+function renderTransactionLog() {
+  const logEl = document.getElementById("log");
+  const user = getUserData();
+  if (!user) return;
 
-    // ----------------------------
-    // PENDING DEPOSITS / WITHDRAWALS
-    // ----------------------------
-    function renderPendingLists() {
-      if (currentUser !== "FF2DMD") return;
-      const pendingDepositsEl = document.getElementById('pending-deposits');
-      const pendingWithdrawalsEl = document.getElementById('pending-withdrawals');
+  logEl.innerHTML = "";
+  user.transactionLog.forEach(t => {
+    const p = document.createElement("p");
+    p.textContent = `[${t.time}] ${t.type}: ${t.amount}`;
+    logEl.prepend(p);
+  });
+}
 
-      pendingDepositsEl.innerHTML = '';
-      pendingDeposits.forEach((item, index) => {
-        const li = document.createElement('li');
-        li.textContent = `[${item.time}] ${item.username} wants to deposit ${item.amount} coins `;
-        const approveBtn = document.createElement('button');
-        approveBtn.textContent = "Approve";
-        approveBtn.addEventListener('click', () => approveDeposit(index));
-        li.appendChild(approveBtn);
-        pendingDepositsEl.appendChild(li);
-      });
+/* -------------------- REGISTER / LOGIN -------------------- */
+document.getElementById("register-btn").onclick = () => {
+  const u = regUsername.value.trim();
+  const p = regPassword.value.trim();
+  if (!u || !p) return alert("Missing fields");
 
-      pendingWithdrawalsEl.innerHTML = '';
-      pendingWithdrawals.forEach((item, index) => {
-        const li = document.createElement('li');
-        li.innerHTML = `[${item.time}] ${item.username} requests withdrawal of ${item.amount} coins. Link: <a href="${item.link}" target="_blank">${item.link}</a>`;
-        const approveBtn = document.createElement('button');
-        approveBtn.textContent = "Approve";
-        approveBtn.addEventListener('click', () => approveWithdraw(index));
-        li.appendChild(approveBtn);
-        pendingWithdrawalsEl.appendChild(li);
-      });
-    }
+  const accounts = loadAccounts();
+  if (accounts[u]) return alert("User exists");
 
-    function approveDeposit(index) {
-      const item = pendingDeposits[index];
-      const userData = getUserData(item.username);
-      if (!userData) return alert("User does not exist");
-      userData.balance += item.amount;
-      addTransaction(item.username, "Deposit (Approved)", item.amount);
-      accounts[item.username] = userData;
-      saveAccounts();
-      pendingDeposits.splice(index, 1);
-      localStorage.setItem('pendingDeposits', JSON.stringify(pendingDeposits));
-      renderPendingLists();
-      updateBalanceDisplay();
-    }
+  accounts[u] = { password: p, balance: 5, transactionLog: [] };
+  saveAccounts(accounts);
+  alert("Registered!");
+};
 
-    function approveWithdraw(index) {
-      const item = pendingWithdrawals[index];
-      const userData = getUserData(item.username);
-      if (!userData) return alert("User does not exist");
-      userData.balance -= item.amount;
-      addTransaction(item.username, "Withdrawal (Approved)", item.amount, item.link);
-      accounts[item.username] = userData;
-      saveAccounts();
-      pendingWithdrawals.splice(index, 1);
-      localStorage.setItem('pendingWithdrawals', JSON.stringify(pendingWithdrawals));
-      renderPendingLists();
-      updateBalanceDisplay();
-    }
+document.getElementById("login-btn").onclick = () => {
+  const u = loginUsername.value.trim();
+  const p = loginPassword.value.trim();
+  const accounts = loadAccounts();
 
-    // ----------------------------
-    // DEPOSIT / WITHDRAW REQUESTS
-    // ----------------------------
-    document.getElementById('deposit-btn').addEventListener('click', () => {
-      if (!currentUser) return alert("Please login!");
-      const amount = Number(amountEl.value);
-      if (!amount || amount <= 0) return alert("Enter valid amount");
-      pendingDeposits.push({ username: currentUser, amount, time: new Date().toLocaleString() });
-      localStorage.setItem('pendingDeposits', JSON.stringify(pendingDeposits));
-      alert("Deposit sent for admin approval!");
-      amountEl.value = '';
-      renderPendingLists();
-    });
+  if (!accounts[u] || accounts[u].password !== p)
+    return alert("Invalid login");
 
-    document.getElementById('withdraw-btn').addEventListener('click', () => {
-      const link = document.getElementById('withdraw-link').value.trim();
-      const amount = Number(amountEl.value);
-      if (!link) return alert("Paste your Roblox Gamepass link!");
-      if (!link.startsWith("https://create.roblox.com/dashboard/creations/")) return alert("Invalid Gamepass link!");
-      if (!amount || amount <= 0) return alert("Enter a valid amount");
+  localStorage.setItem("currentUser", u);
+  updateUserDisplay();
+  updateBalanceDisplay();
+  renderTransactionLog();
+  renderPendingLists();
+};
 
-      pendingWithdrawals.push({ link, amount, username: currentUser || "Unknown", time: new Date().toLocaleString() });
-      localStorage.setItem('pendingWithdrawals', JSON.stringify(pendingWithdrawals));
-      alert("Withdrawal request submitted! Admin will review your Gamepass link.");
-      amountEl.value = '';
-      document.getElementById('withdraw-link').value = '';
-      renderPendingLists();
-    });
+/* -------------------- DEPOSIT / WITHDRAW -------------------- */
+let pendingDeposits = JSON.parse(localStorage.getItem("pendingDeposits")) || [];
+let pendingWithdrawals = JSON.parse(localStorage.getItem("pendingWithdrawals")) || [];
 
-    // ----------------------------
-    // ADMIN MANUAL ADD/REMOVE
-    // ----------------------------
-    document.getElementById('manual-add-btn').addEventListener('click', () => {
-      if (currentUser !== "FF2DMD") return alert("Only FF2DMD can use this panel");
-      const targetUser = document.getElementById('manual-username').value.trim();
-      const amount = Number(document.getElementById('manual-amount').value);
-      if (!targetUser || !amount) return alert("Enter valid username and amount");
-      const userData = getUserData(targetUser);
-      if (!userData) return alert("User does not exist");
-      userData.balance += amount;
-      addTransaction(targetUser, amount > 0 ? "Admin Add" : "Admin Remove", amount);
-      accounts[targetUser] = userData;
-      saveAccounts();
-      alert(`${amount > 0 ? "Added" : "Removed"} ${Math.abs(amount)} coins for ${targetUser}`);
-      document.getElementById('manual-username').value = '';
-      document.getElementById('manual-amount').value = '';
-      updateBalanceDisplay();
-      renderTransactionLog();
-    });
+depositBtn.onclick = () => {
+  const amt = Number(amount.value);
+  const user = getCurrentUser();
+  if (!user || amt <= 0) return alert("Invalid");
 
-    // INITIAL RENDER
-    renderTransactionLog();
-    renderPendingLists();
+  pendingDeposits.push({ username: user, amount: amt, time: new Date().toLocaleString() });
+  localStorage.setItem("pendingDeposits", JSON.stringify(pendingDeposits));
+  renderPendingLists();
+};
 
-  </script>
+withdrawBtn.onclick = () => {
+  const amt = Number(amount.value);
+  const link = withdrawLink.value.trim();
+  const user = getCurrentUser();
+
+  if (!link || amt <= 0) return alert("Invalid");
+  pendingWithdrawals.push({ username: user, amount: amt, link, time: new Date().toLocaleString() });
+  localStorage.setItem("pendingWithdrawals", JSON.stringify(pendingWithdrawals));
+  renderPendingLists();
+};
+
+/* -------------------- ADMIN -------------------- */
+function renderPendingLists() {
+  if (getCurrentUser() !== "FF2DMD") return;
+
+  pendingDepositsEl.innerHTML = "";
+  pendingDeposits.forEach((d, i) => {
+    const li = document.createElement("li");
+    li.textContent = `${d.username} wants ${d.amount}`;
+    const b = document.createElement("button");
+    b.textContent = "Approve";
+    b.onclick = () => approveDeposit(i);
+    li.appendChild(b);
+    pendingDepositsEl.appendChild(li);
+  });
+
+  pendingWithdrawalsEl.innerHTML = "";
+  pendingWithdrawals.forEach((w, i) => {
+    const li = document.createElement("li");
+    li.textContent = `${w.username} withdraw ${w.amount}`;
+    const b = document.createElement("button");
+    b.textContent = "Approve";
+    b.onclick = () => approveWithdraw(i);
+    li.appendChild(b);
+    pendingWithdrawalsEl.appendChild(li);
+  });
+}
+
+function approveDeposit(i) {
+  const d = pendingDeposits[i];
+  const accounts = loadAccounts();
+  accounts[d.username].balance += d.amount;
+  addTransaction(d.username, "Deposit Approved", d.amount);
+  saveAccounts(accounts);
+
+  pendingDeposits.splice(i, 1);
+  localStorage.setItem("pendingDeposits", JSON.stringify(pendingDeposits));
+  renderPendingLists();
+  updateBalanceDisplay();
+}
+
+function approveWithdraw(i) {
+  const w = pendingWithdrawals[i];
+  const accounts = loadAccounts();
+  accounts[w.username].balance -= w.amount;
+  addTransaction(w.username, "Withdraw Approved", w.amount);
+  saveAccounts(accounts);
+
+  pendingWithdrawals.splice(i, 1);
+  localStorage.setItem("pendingWithdrawals", JSON.stringify(pendingWithdrawals));
+  renderPendingLists();
+  updateBalanceDisplay();
+}
+
+manualAddBtn.onclick = () => {
+  if (getCurrentUser() !== "FF2DMD") return;
+
+  const u = manualUsername.value.trim();
+  const amt = Number(manualAmount.value);
+  const accounts = loadAccounts();
+
+  if (!accounts[u]) return alert("User not found");
+
+  accounts[u].balance += amt;
+  addTransaction(u, amt > 0 ? "Admin Add" : "Admin Remove", amt);
+  saveAccounts(accounts);
+  updateBalanceDisplay();
+};
+
+updateUserDisplay();
+updateBalanceDisplay();
+renderTransactionLog();
+</script>
+
 </body>
 </html>
-
