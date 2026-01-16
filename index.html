@@ -94,10 +94,12 @@
 
     let accounts = JSON.parse(localStorage.getItem('accounts')) || {};
     let currentUser = localStorage.getItem('currentUser') || null;
-    let logsCleared = false;
 
     let pendingDeposits = JSON.parse(localStorage.getItem('pendingDeposits')) || [];
     let pendingWithdrawals = JSON.parse(localStorage.getItem('pendingWithdrawals')) || [];
+
+    // LOGS CLEAR FLAG
+    let logsCleared = false;
 
     // ----------------------------
     // UTILITY FUNCTIONS
@@ -105,14 +107,19 @@
     function loadAccounts() { accounts = JSON.parse(localStorage.getItem('accounts')) || {}; return accounts; }
     function saveAccounts() { localStorage.setItem('accounts', JSON.stringify(accounts)); }
     function getUserData(username = currentUser) { loadAccounts(); return accounts[username] || null; }
+
     function updateBalanceDisplay() {
       const userData = getUserData();
       balanceEl.textContent = `Coins: ${userData ? userData.balance : 0}`;
     }
+
     function updateLoggedInDisplay() {
       loggedInUserEl.textContent = currentUser ? `Logged in as: ${currentUser}` : "Not logged in";
       document.getElementById('admin-panel').style.display = (currentUser === "FF2DMD") ? "block" : "none";
     }
+
+    updateLoggedInDisplay();
+    updateBalanceDisplay();
 
     // ----------------------------
     // REGISTER / LOGIN
@@ -148,9 +155,6 @@
       alert(`Logged in as ${username}`);
     });
 
-    updateLoggedInDisplay();
-    updateBalanceDisplay();
-
     // ----------------------------
     // TRANSACTION LOGS
     // ----------------------------
@@ -168,12 +172,11 @@
       const userData = getUserData();
       if (!userData) return;
       logEl.innerHTML = '';
+      // Show all logs normally if not cleared
       userData.transactionLog.forEach(t => {
-        if (!logsCleared || t.time > logsClearedTime) {
-          const p = document.createElement('p');
-          p.textContent = `[${t.time}] ${t.type}: ${t.amount} coins (User: ${currentUser})`;
-          logEl.prepend(p);
-        }
+        const p = document.createElement('p');
+        p.textContent = `[${t.time}] ${t.type}: ${t.amount} coins (User: ${currentUser})`;
+        logEl.prepend(p);
       });
     }
 
@@ -212,7 +215,6 @@
       const item = pendingDeposits[index];
       const userData = getUserData(item.username);
       if (!userData) return alert("User does not exist");
-
       userData.balance += item.amount;
       addTransaction(item.username, "Deposit (Approved)", item.amount);
       accounts[item.username] = userData;
@@ -227,7 +229,6 @@
       const item = pendingWithdrawals[index];
       const userData = getUserData(item.username);
       if (!userData) return alert("User does not exist");
-
       userData.balance -= item.amount;
       addTransaction(item.username, "Withdrawal (Approved)", item.amount);
       accounts[item.username] = userData;
@@ -245,7 +246,6 @@
       if (!currentUser) return alert("Please login!");
       const amount = Number(amountEl.value);
       if (!amount || amount <= 0) return alert("Enter valid amount");
-
       pendingDeposits.push({ username: currentUser, amount, time: new Date().toLocaleString() });
       localStorage.setItem('pendingDeposits', JSON.stringify(pendingDeposits));
       alert("Deposit sent for admin approval!");
@@ -256,21 +256,12 @@
     document.getElementById('withdraw-btn').addEventListener('click', () => {
       const link = document.getElementById('withdraw-link').value.trim();
       const amount = Number(amountEl.value);
-
       if (!link) return alert("Paste your Roblox Gamepass link!");
-      if (!link.startsWith("https://create.roblox.com/dashboard/creations/")) {
-        return alert("Invalid Gamepass link!");
-      }
+      if (!link.startsWith("https://create.roblox.com/dashboard/creations/")) return alert("Invalid Gamepass link!");
       if (!amount || amount <= 0) return alert("Enter a valid amount");
 
-      pendingWithdrawals.push({
-        link,
-        amount,
-        username: currentUser || "Unknown",
-        time: new Date().toLocaleString()
-      });
+      pendingWithdrawals.push({ link, amount, username: currentUser || "Unknown", time: new Date().toLocaleString() });
       localStorage.setItem('pendingWithdrawals', JSON.stringify(pendingWithdrawals));
-
       alert("Withdrawal request submitted! Admin will review your Gamepass link.");
       amountEl.value = '';
       document.getElementById('withdraw-link').value = '';
@@ -282,21 +273,17 @@
     // ----------------------------
     // ADMIN MANUAL ADD/REMOVE
     // ----------------------------
-    const manualAddBtn = document.getElementById('manual-add-btn');
-    manualAddBtn.addEventListener('click', () => {
+    document.getElementById('manual-add-btn').addEventListener('click', () => {
       if (currentUser !== "FF2DMD") return alert("Only FF2DMD can use this panel");
-
       const targetUser = document.getElementById('manual-username').value.trim();
       const amount = Number(document.getElementById('manual-amount').value);
       if (!targetUser || !amount) return alert("Enter valid username and amount");
       const userData = getUserData(targetUser);
       if (!userData) return alert("User does not exist");
-
       userData.balance += amount;
       addTransaction(targetUser, amount > 0 ? "Admin Add" : "Admin Remove", amount);
       accounts[targetUser] = userData;
       saveAccounts();
-
       alert(`${amount > 0 ? "Added" : "Removed"} ${Math.abs(amount)} coins for ${targetUser}`);
       document.getElementById('manual-username').value = '';
       document.getElementById('manual-amount').value = '';
@@ -305,20 +292,18 @@
     });
 
     // ----------------------------
-    // CLEAR LOGS (ONE TIME VISUAL)
+    // CLEAR LOGS (ONE-TIME VISUAL)
     // ----------------------------
-    let logsClearedTime = null;
     clearLogsBtn.addEventListener('click', () => {
       if (currentUser !== "FF2DMD") return alert("Only FF2DMD can clear logs");
-      if (!logsClearedTime) {
-        logsClearedTime = new Date(); // mark clear timestamp
-        alert("Logs cleared visually. New transactions will appear normally.");
-        renderTransactionLog();
+      if (!logsCleared) {
+        logsCleared = true;
+        logEl.innerHTML = '';
+        alert("Transaction logs visually cleared. New transactions will appear normally.");
       } else {
-        alert("Logs have already been cleared once. New transactions will show as normal.");
+        alert("Logs have already been cleared once. New transactions will appear normally.");
       }
     });
-
   </script>
 </body>
 </html>
