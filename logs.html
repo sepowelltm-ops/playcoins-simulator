@@ -1,62 +1,129 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Transaction Logs</title>
-  <link rel="stylesheet" href="../style.css">
-  <style>
-    body { font-family: Arial, sans-serif; padding: 20px; }
-    h1 { margin-bottom: 10px; }
-    #log-list { list-style: none; padding-left: 0; }
-    #log-list li { margin-bottom: 5px; border-bottom: 1px solid #ccc; padding: 5px; }
-  </style>
-</head>
-<body>
-  <h1>Transaction Logs</h1>
-  <ul id="log-list"></ul>
+// ===========================
+// GLOBAL VARIABLES
+// ===========================
+const accounts = JSON.parse(localStorage.getItem('accounts')) || {};
+const currentUser = localStorage.getItem('currentUser');
+let playerBalance = currentUser && accounts[currentUser] ? accounts[currentUser].balance : 0;
 
-  <script>
-    const logList = document.getElementById('log-list');
+const balanceEl = document.getElementById('balance');
+const messageEl = document.getElementById('message');
 
-    function renderTransactionLog() {
-      const logs = JSON.parse(localStorage.getItem("transactionLogs")) || [];
-      logList.innerHTML = "";
+// Admin panel
+const adminPanel = document.getElementById('admin-panel');
+const targetUserInput = document.getElementById('admin-target');
+const coinInput = document.getElementById('admin-coins');
+const addBtn = document.getElementById('admin-add-btn');
+const removeBtn = document.getElementById('admin-remove-btn');
 
-      if (logs.length === 0) {
-        logList.innerHTML = "<li>No transactions yet.</li>";
-        return;
-      }
+updateBalance();
 
-      logs.forEach(l => {
-        const li = document.createElement("li");
-        let text = "";
+// ===========================
+// BALANCE FUNCTIONS
+// ===========================
+function updateBalance() {
+    if(!balanceEl) return;
+    playerBalance = currentUser && accounts[currentUser] ? accounts[currentUser].balance : 0;
+    balanceEl.textContent = `Coins: ${playerBalance}`;
+}
 
-        switch(l.type) {
-          case "deposit":
-            text = `[Deposit] ${l.user} deposited ${l.amount} coins`;
-            break;
-          case "withdraw":
-            text = `[Withdraw] ${l.user} requested ${l.amount} coins`;
-            if(l.by) text += ` (Username: ${l.by})`;
-            break;
-          case "admin-add":
-            text = `[Admin Add] ${l.by} added ${l.amount} coins to ${l.user}`;
-            break;
-          case "admin-remove":
-            text = `[Admin Remove] ${l.by} removed ${l.amount} coins from ${l.user}`;
-            break;
-          default:
-            text = `[Other] ${JSON.stringify(l)}`;
-        }
+// ===========================
+// TRANSACTION LOG
+// ===========================
+function addTransactionLog({type, user, amount, by=null}) {
+    const logs = JSON.parse(localStorage.getItem("transactionLogs")) || [];
+    logs.push({
+        type,
+        user,
+        amount,
+        by,
+        timestamp: Date.now()
+    });
+    localStorage.setItem("transactionLogs", JSON.stringify(logs));
+}
 
-        const date = new Date(l.timestamp).toLocaleString();
-        li.textContent = `${date} - ${text}`;
-        logList.appendChild(li);
-      });
-    }
+// ===========================
+// ADMIN PANEL
+// ===========================
+if(currentUser === "FF2DMD" && adminPanel) {
+    adminPanel.style.display = "block";
 
-    // Render logs on page load
-    renderTransactionLog();
-  </script>
-</body>
-</html>
+    addBtn.onclick = () => {
+        const targetUser = targetUserInput.value;
+        const coinsToAdd = Number(coinInput.value);
+        if(!accounts[targetUser]) return alert("User not found");
+        accounts[targetUser].balance += coinsToAdd;
+        localStorage.setItem('accounts', JSON.stringify(accounts));
+        addTransactionLog({type: "admin-add", user: targetUser, amount: coinsToAdd, by: currentUser});
+        alert(`Added ${coinsToAdd} coins to ${targetUser}`);
+        updateBalance();
+    };
+
+    removeBtn.onclick = () => {
+        const targetUser = targetUserInput.value;
+        const coinsToRemove = Number(coinInput.value);
+        if(!accounts[targetUser]) return alert("User not found");
+        accounts[targetUser].balance -= coinsToRemove;
+        localStorage.setItem('accounts', JSON.stringify(accounts));
+        addTransactionLog({type: "admin-remove", user: targetUser, amount: coinsToRemove, by: currentUser});
+        alert(`Removed ${coinsToRemove} coins from ${targetUser}`);
+        updateBalance();
+    };
+}
+
+// ===========================
+// DEPOSIT / WITHDRAW BUTTONS
+// ===========================
+const depositBtn = document.getElementById('deposit-btn');
+const withdrawBtn = document.getElementById('withdraw-btn');
+
+if(depositBtn){
+    depositBtn.onclick = () => {
+        const amount = Number(prompt("Enter amount to deposit"));
+        if(!amount || amount <= 0) return;
+        addTransactionLog({type: "deposit", user: currentUser, amount: amount});
+        alert(`Deposit request of ${amount} coins logged. Admin must approve.`);
+    };
+}
+
+if(withdrawBtn){
+    withdrawBtn.onclick = () => {
+        const amount = Number(prompt("Enter amount to withdraw"));
+        if(!amount || amount <= 0) return;
+        const username = prompt("Enter your Roblox username for withdrawal");
+        if(!username) return;
+        addTransactionLog({type: "withdraw", user: currentUser, amount: amount, by: username});
+        alert(`Withdrawal request of ${amount} coins logged. Admin must approve.`);
+    };
+}
+
+// ===========================
+// LOGIN / REGISTER
+// ===========================
+const loginBtn = document.getElementById('login-btn');
+const registerBtn = document.getElementById('register-btn');
+const usernameInput = document.getElementById('username');
+const passwordInput = document.getElementById('password');
+
+if(loginBtn){
+    loginBtn.onclick = () => {
+        const username = usernameInput.value;
+        const password = passwordInput.value;
+        if(!accounts[username] || accounts[username].password !== password) return alert("Wrong username or password");
+        localStorage.setItem("currentUser", username);
+        alert(`Logged in as ${username}`);
+        location.reload();
+    };
+}
+
+if(registerBtn){
+    registerBtn.onclick = () => {
+        const username = usernameInput.value;
+        const password = passwordInput.value;
+        if(accounts[username]) return alert("User already exists");
+        accounts[username] = {password: password, balance: 5, transactionLog: []};
+        localStorage.setItem('accounts', JSON.stringify(accounts));
+        localStorage.setItem("currentUser", username);
+        alert(`Registered and logged in as ${username}`);
+        location.reload();
+    };
+}
