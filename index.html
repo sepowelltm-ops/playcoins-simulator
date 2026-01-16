@@ -12,16 +12,14 @@
     <div id="logged-in-user">Not logged in</div>
   </header>
 
-  <!-- Login / Register Section -->
+  <!-- Login / Register -->
   <section class="auth-section">
     <h2>Register / Login</h2>
-
     <!-- Register -->
     <input id="reg-username" placeholder="Username" />
     <input id="reg-password" type="password" placeholder="Password" />
     <button id="register-btn">Register</button>
     <br><br>
-
     <!-- Login -->
     <input id="login-username" placeholder="Username" />
     <input id="login-password" type="password" placeholder="Password" />
@@ -49,18 +47,28 @@
     </ul>
   </section>
 
-  <!-- Admin Panel (hidden unless FF2DMD) -->
+  <!-- Admin Panel (FF2DMD only) -->
   <section class="admin-section" id="admin-panel" style="display:none;">
-    <h2>Admin: Add Coins to User</h2>
-    <input id="admin-username" placeholder="Username" />
-    <input id="admin-amount" type="number" placeholder="Amount" />
-    <button id="admin-add-btn">Add Coins</button>
+    <h2>Admin Panel (FF2DMD)</h2>
+
+    <!-- Pending Deposits -->
+    <h3>Pending Deposits</h3>
+    <ul id="pending-deposits"></ul>
+
+    <!-- Pending Withdrawals -->
+    <h3>Pending Withdrawals</h3>
+    <ul id="pending-withdrawals"></ul>
+
+    <!-- Manual Add/Remove Coins -->
+    <h3>Add/Remove Coins Manually</h3>
+    <input id="manual-username" placeholder="Username" />
+    <input id="manual-amount" type="number" placeholder="Amount (+ or -)" />
+    <button id="manual-add-btn">Apply Coins</button>
   </section>
 
-  <!-- Transaction Logs -->
+  <!-- Transaction Log -->
   <div id="log"></div>
 
-  <!-- Scripts -->
   <script src="script.js"></script>
   <script>
     // ----------------------------
@@ -74,8 +82,8 @@
     const loginPasswordEl = document.getElementById('login-password');
     const loggedInUserEl = document.getElementById('logged-in-user');
 
-    let currentUser = localStorage.getItem('currentUser') || null;
     let accounts = JSON.parse(localStorage.getItem('accounts')) || {};
+    let currentUser = localStorage.getItem('currentUser') || null;
 
     function updateLoggedInDisplay() {
       loggedInUserEl.textContent = currentUser ? `Logged in as: ${currentUser}` : "Not logged in";
@@ -119,6 +127,7 @@
       loginPasswordEl.value = '';
       updateBalanceDisplay();
       renderTransactionLog();
+      renderPendingLists();
     });
 
     updateLoggedInDisplay();
@@ -130,19 +139,15 @@
     const amountEl = document.getElementById('amount');
     const logEl = document.getElementById('log');
 
-    function getUserData() {
-      if (!currentUser) return null;
+    function getUserData(username = currentUser) {
+      if (!username) return null;
       accounts = JSON.parse(localStorage.getItem('accounts')) || {};
-      return accounts[currentUser];
+      return accounts[username];
     }
 
     function updateBalanceDisplay() {
       const userData = getUserData();
-      if (!userData) {
-        balanceEl.textContent = "Coins: 0";
-        return;
-      }
-      balanceEl.textContent = `Coins: ${userData.balance}`;
+      balanceEl.textContent = `Coins: ${userData ? userData.balance : 0}`;
     }
 
     function renderTransactionLog() {
@@ -156,78 +161,129 @@
       });
     }
 
-    function addTransaction(type, amount) {
-      const userData = getUserData();
+    function addTransaction(username, type, amount) {
+      const userData = getUserData(username);
       if (!userData) return;
       const time = new Date().toLocaleString();
       userData.transactionLog.push({ type, amount, time });
-      accounts[currentUser] = userData;
+      accounts[username] = userData;
       localStorage.setItem('accounts', JSON.stringify(accounts));
-      renderTransactionLog();
+      if (username === currentUser) renderTransactionLog();
     }
 
-    // Deposit
+    // ----------------------------
+    // PENDING DEPOSITS / WITHDRAWALS
+    // ----------------------------
+    let pendingDeposits = JSON.parse(localStorage.getItem('pendingDeposits')) || [];
+    let pendingWithdrawals = JSON.parse(localStorage.getItem('pendingWithdrawals')) || [];
+
+    function renderPendingLists() {
+      if (currentUser !== "FF2DMD") return;
+
+      const pendingDepositsEl = document.getElementById('pending-deposits');
+      const pendingWithdrawalsEl = document.getElementById('pending-withdrawals');
+
+      pendingDepositsEl.innerHTML = '';
+      pendingDeposits.forEach((item, index) => {
+        const li = document.createElement('li');
+        li.textContent = `[${item.time}] ${item.username} wants to deposit ${item.amount} coins `;
+        const approveBtn = document.createElement('button');
+        approveBtn.textContent = "Approve";
+        approveBtn.addEventListener('click', () => approveDeposit(index));
+        li.appendChild(approveBtn);
+        pendingDepositsEl.appendChild(li);
+      });
+
+      pendingWithdrawalsEl.innerHTML = '';
+      pendingWithdrawals.forEach((item, index) => {
+        const li = document.createElement('li');
+        li.textContent = `[${item.time}] ${item.username} wants to withdraw ${item.amount} coins `;
+        const approveBtn = document.createElement('button');
+        approveBtn.textContent = "Approve";
+        approveBtn.addEventListener('click', () => approveWithdraw(index));
+        li.appendChild(approveBtn);
+        pendingWithdrawalsEl.appendChild(li);
+      });
+    }
+
+    function approveDeposit(index) {
+      const item = pendingDeposits[index];
+      accounts[item.username].balance += item.amount;
+      addTransaction(item.username, "Deposit (Approved)", item.amount);
+      pendingDeposits.splice(index, 1);
+      localStorage.setItem('pendingDeposits', JSON.stringify(pendingDeposits));
+      localStorage.setItem('accounts', JSON.stringify(accounts));
+      renderPendingLists();
+      updateBalanceDisplay();
+    }
+
+    function approveWithdraw(index) {
+      const item = pendingWithdrawals[index];
+      accounts[item.username].balance -= item.amount;
+      addTransaction(item.username, "Withdrawal (Approved)", item.amount);
+      pendingWithdrawals.splice(index, 1);
+      localStorage.setItem('pendingWithdrawals', JSON.stringify(pendingWithdrawals));
+      localStorage.setItem('accounts', JSON.stringify(accounts));
+      renderPendingLists();
+      updateBalanceDisplay();
+    }
+
+    // Deposit request
     document.getElementById('deposit-btn').addEventListener('click', () => {
-      const userData = getUserData();
-      if (!userData) return alert("Please login first!");
+      if (!currentUser) return alert("Please login first!");
       const amount = Number(amountEl.value);
       if (!amount || amount <= 0) return alert("Enter valid amount");
-      userData.balance += amount;
-      accounts[currentUser] = userData;
-      localStorage.setItem('accounts', JSON.stringify(accounts));
-      addTransaction("Deposit", amount);
-      updateBalanceDisplay();
+
+      pendingDeposits.push({ username: currentUser, amount, time: new Date().toLocaleString() });
+      localStorage.setItem('pendingDeposits', JSON.stringify(pendingDeposits));
+      alert("Deposit sent for admin approval!");
       amountEl.value = '';
+      renderPendingLists();
     });
 
-    // Withdraw
+    // Withdraw request
     document.getElementById('withdraw-btn').addEventListener('click', () => {
-      const userData = getUserData();
-      if (!userData) return alert("Please login first!");
+      if (!currentUser) return alert("Please login first!");
       const amount = Number(amountEl.value);
       if (!amount || amount <= 0) return alert("Enter valid amount");
-      if (amount > userData.balance) return alert("Not enough coins");
-      userData.balance -= amount;
-      accounts[currentUser] = userData;
-      localStorage.setItem('accounts', JSON.stringify(accounts));
-      addTransaction("Withdraw", amount);
-      updateBalanceDisplay();
+
+      pendingWithdrawals.push({ username: currentUser, amount, time: new Date().toLocaleString() });
+      localStorage.setItem('pendingWithdrawals', JSON.stringify(pendingWithdrawals));
+      alert("Withdrawal request sent for admin approval!");
       amountEl.value = '';
+      renderPendingLists();
+    });
+
+    renderPendingLists();
+
+    // ----------------------------
+    // MANUAL ADD/REMOVE COINS
+    // ----------------------------
+    const manualAddBtn = document.getElementById('manual-add-btn');
+    const manualUsernameEl = document.getElementById('manual-username');
+    const manualAmountEl = document.getElementById('manual-amount');
+
+    manualAddBtn.addEventListener('click', () => {
+      if (currentUser !== "FF2DMD") return alert("Only FF2DMD can use this panel");
+
+      const targetUser = manualUsernameEl.value.trim();
+      const amount = Number(manualAmountEl.value);
+      if (!targetUser || !amount) return alert("Enter valid username and amount");
+      if (!accounts[targetUser]) return alert("User does not exist");
+
+      accounts[targetUser].balance += amount;
+      addTransaction(targetUser, amount > 0 ? "Admin Add" : "Admin Remove", amount);
+      localStorage.setItem('accounts', JSON.stringify(accounts));
+
+      alert(`${amount > 0 ? "Added" : "Removed"} ${Math.abs(amount)} coins for ${targetUser}`);
+      manualUsernameEl.value = '';
+      manualAmountEl.value = '';
+      updateBalanceDisplay();
+      renderTransactionLog();
     });
 
     updateBalanceDisplay();
     renderTransactionLog();
-
-    // ----------------------------
-    // ADMIN PANEL (FF2DMD ONLY)
-    // ----------------------------
-    const adminAddBtn = document.getElementById('admin-add-btn');
-    const adminUsernameEl = document.getElementById('admin-username');
-    const adminAmountEl = document.getElementById('admin-amount');
-
-    adminAddBtn.addEventListener('click', () => {
-      if (currentUser !== "FF2DMD") return alert("You cannot use this panel");
-
-      const targetUser = adminUsernameEl.value.trim();
-      const amount = Number(adminAmountEl.value);
-      if (!targetUser || !amount || amount <= 0) return alert("Enter valid username and amount");
-
-      if (!accounts[targetUser]) return alert("User does not exist");
-
-      accounts[targetUser].balance += amount;
-      const time = new Date().toLocaleString();
-      accounts[targetUser].transactionLog.push({ type: "Admin Add", amount, time });
-      localStorage.setItem('accounts', JSON.stringify(accounts));
-
-      alert(`Added ${amount} coins to ${targetUser}`);
-
-      // Update display if current user is the one updated
-      if (currentUser === targetUser) updateBalanceDisplay();
-      renderTransactionLog();
-
-      adminUsernameEl.value = '';
-      adminAmountEl.value = '';
-    });
   </script>
 </body>
 </html>
