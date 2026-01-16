@@ -9,13 +9,21 @@
   <header>
     <h1>PlayCoins Simulator</h1>
     <div id="balance">Coins: 5</div>
-    <div id="logged-in-user"></div>
+    <div id="logged-in-user">Not logged in</div>
   </header>
 
-  <section class="controls">
-    <input id="username" placeholder="Enter your username" />
-    <button id="login-btn">Login</button>
+  <section class="auth-section">
+    <h2>Register / Login</h2>
+    <input id="reg-username" placeholder="Username" />
+    <input id="reg-password" type="password" placeholder="Password" />
+    <button id="register-btn">Register</button>
     <br><br>
+    <input id="login-username" placeholder="Username" />
+    <input id="login-password" type="password" placeholder="Password" />
+    <button id="login-btn">Login</button>
+  </section>
+
+  <section class="controls">
     <input id="amount" type="number" placeholder="Amount" />
     <button id="deposit-btn">Deposit</button>
     <button id="withdraw-btn">Withdraw</button>
@@ -38,29 +46,135 @@
 
   <script src="script.js"></script>
   <script>
-    const usernameInput = document.getElementById('username');
+    // ----------------------------
+    // SIMPLE CLIENT-SIDE LOGIN/REGISTER
+    // ----------------------------
+    const registerBtn = document.getElementById('register-btn');
     const loginBtn = document.getElementById('login-btn');
-    const loggedInUser = document.getElementById('logged-in-user');
+    const regUsernameEl = document.getElementById('reg-username');
+    const regPasswordEl = document.getElementById('reg-password');
+    const loginUsernameEl = document.getElementById('login-username');
+    const loginPasswordEl = document.getElementById('login-password');
+    const loggedInUserEl = document.getElementById('logged-in-user');
 
-    // Load saved username
-    let username = localStorage.getItem('username') || "";
+    let currentUser = null; // store logged in username
 
-    function updateLoggedInUser() {
-      loggedInUser.textContent = username ? `Logged in as: ${username}` : `Not logged in`;
-      usernameInput.value = username;
+    // Load accounts from localStorage
+    let accounts = JSON.parse(localStorage.getItem('accounts')) || {};
+
+    function updateLoggedInDisplay() {
+      loggedInUserEl.textContent = currentUser ? `Logged in as: ${currentUser}` : "Not logged in";
     }
 
-    loginBtn.addEventListener('click', () => {
-      const name = usernameInput.value.trim();
-      if (!name) return alert("Enter a valid username");
-      username = name;
-      localStorage.setItem('username', username);
-      updateLoggedInUser();
-      alert(`Logged in as ${username}`);
+    // Register account
+    registerBtn.addEventListener('click', () => {
+      const username = regUsernameEl.value.trim();
+      const password = regPasswordEl.value.trim();
+      if (!username || !password) return alert("Enter both username and password");
+      if (accounts[username]) return alert("Username already exists");
+
+      accounts[username] = { password, balance: 5, transactionLog: [] };
+      localStorage.setItem('accounts', JSON.stringify(accounts));
+      alert(`Account ${username} registered! You can now login.`);
+      regUsernameEl.value = '';
+      regPasswordEl.value = '';
     });
 
-    // Initialize display
-    updateLoggedInUser();
+    // Login account
+    loginBtn.addEventListener('click', () => {
+      const username = loginUsernameEl.value.trim();
+      const password = loginPasswordEl.value.trim();
+      if (!username || !password) return alert("Enter both username and password");
+      if (!accounts[username]) return alert("Account does not exist");
+      if (accounts[username].password !== password) return alert("Incorrect password");
+
+      currentUser = username;
+      localStorage.setItem('currentUser', currentUser);
+      updateLoggedInDisplay();
+      alert(`Logged in as ${username}`);
+
+      loginUsernameEl.value = '';
+      loginPasswordEl.value = '';
+      updateBalanceDisplay();
+      renderTransactionLog();
+    });
+
+    // Auto-login if user was previously logged in
+    currentUser = localStorage.getItem('currentUser');
+    updateLoggedInDisplay();
+
+    // ----------------------------
+    // BALANCE & TRANSACTIONS
+    // ----------------------------
+
+    const balanceEl = document.getElementById('balance');
+    const amountEl = document.getElementById('amount');
+    const logEl = document.getElementById('log');
+
+    function getUserData() {
+      if (!currentUser) return null;
+      accounts = JSON.parse(localStorage.getItem('accounts')) || {};
+      return accounts[currentUser];
+    }
+
+    function updateBalanceDisplay() {
+      const userData = getUserData();
+      if (!userData) return;
+      balanceEl.textContent = `Coins: ${userData.balance}`;
+    }
+
+    function renderTransactionLog() {
+      const userData = getUserData();
+      if (!userData) return;
+      logEl.innerHTML = '';
+      userData.transactionLog.forEach(t => {
+        const p = document.createElement('p');
+        p.textContent = `[${t.time}] ${t.type}: ${t.amount} coins (User: ${currentUser})`;
+        logEl.prepend(p);
+      });
+    }
+
+    function addTransaction(type, amount) {
+      const userData = getUserData();
+      if (!userData) return;
+      const time = new Date().toLocaleString();
+      userData.transactionLog.push({ type, amount, time });
+      accounts[currentUser] = userData;
+      localStorage.setItem('accounts', JSON.stringify(accounts));
+      renderTransactionLog();
+    }
+
+    // Deposit
+    document.getElementById('deposit-btn').addEventListener('click', () => {
+      const userData = getUserData();
+      if (!userData) return alert("Please login first!");
+      const amount = Number(amountEl.value);
+      if (!amount || amount <= 0) return alert("Enter valid amount");
+      userData.balance += amount;
+      accounts[currentUser] = userData;
+      localStorage.setItem('accounts', JSON.stringify(accounts));
+      addTransaction("Deposit", amount);
+      updateBalanceDisplay();
+      amountEl.value = '';
+    });
+
+    // Withdraw
+    document.getElementById('withdraw-btn').addEventListener('click', () => {
+      const userData = getUserData();
+      if (!userData) return alert("Please login first!");
+      const amount = Number(amountEl.value);
+      if (!amount || amount <= 0) return alert("Enter valid amount");
+      if (amount > userData.balance) return alert("Not enough coins");
+      userData.balance -= amount;
+      accounts[currentUser] = userData;
+      localStorage.setItem('accounts', JSON.stringify(accounts));
+      addTransaction("Withdraw", amount);
+      updateBalanceDisplay();
+      amountEl.value = '';
+    });
+
+    updateBalanceDisplay();
+    renderTransactionLog();
   </script>
 </body>
 </html>
