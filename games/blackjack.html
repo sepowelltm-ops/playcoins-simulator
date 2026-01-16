@@ -1,67 +1,183 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Blackjack - PlayCoins</title>
-  <link rel="stylesheet" href="../style.css" />
+  <meta charset="UTF-8">
+  <title>Blackjack</title>
+  <link rel="stylesheet" href="../style.css">
 </head>
 <body>
-  <header>
-    <h1>Blackjack</h1>
-    <div id="balance">Coins: 5</div>
-  </header>
+  <h1>Blackjack</h1>
+  <div id="balance">Coins: 0</div>
+  <div id="message"></div>
 
-  <section class="game-controls">
-    <input id="username" placeholder="Enter your username" />
-    <input id="bet" type="number" placeholder="Bet Amount" />
-    <button id="play-btn">Play Blackjack</button>
-  </section>
+  <div id="game">
+    <div>
+      <h2>Your Hand (<span id="player-score">0</span>)</h2>
+      <div id="player-cards"></div>
+    </div>
 
-  <section id="game-log">
-    <p>Place a bet and click Play!</p>
-  </section>
+    <div>
+      <h2>Dealer's Hand (<span id="dealer-score">0</span>)</h2>
+      <div id="dealer-cards"></div>
+    </div>
 
-  <a href="../index.html">Back to Main Menu</a>
+    <div id="controls">
+      <button id="hit-btn">Hit</button>
+      <button id="stand-btn">Stand</button>
+      <button id="double-btn">Double</button>
+      <input type="number" id="bet-amount" placeholder="Bet coins" min="1" />
+      <button id="start-btn">Start Game</button>
+    </div>
+  </div>
 
-  <script src="../script.js"></script>
   <script>
-    // Blackjack logic (simple, favorable odds for house)
-    const playBtn = document.getElementById("play-btn");
-    const gameLog = document.getElementById("game-log");
-    const balanceEl = document.getElementById("balance");
-    const usernameEl = document.getElementById("username");
-    const betEl = document.getElementById("bet");
+    // ----------------------------
+    // GLOBALS
+    // ----------------------------
+    let playerHand = [];
+    let dealerHand = [];
+    let deck = [];
+    let playerScore = 0;
+    let dealerScore = 0;
+    let playerBalance = 0;
+    const balanceEl = document.getElementById('balance');
+    const messageEl = document.getElementById('message');
 
-    function updateBalanceDisplay() {
-      balanceEl.textContent = `Coins: ${balance}`;
+    // Load balance from localStorage
+    const accounts = JSON.parse(localStorage.getItem('accounts')) || {};
+    const currentUser = localStorage.getItem('currentUser');
+    if (currentUser && accounts[currentUser]) {
+      playerBalance = accounts[currentUser].balance;
+      updateBalanceDisplay();
     }
 
-    playBtn.addEventListener("click", () => {
-      const username = usernameEl.value.trim() || "Unknown";
-      let bet = Number(betEl.value);
-      if (bet <= 0 || isNaN(bet)) return alert("Enter a valid bet amount.");
-      if (bet > balance) return alert("Not enough coins.");
+    function updateBalanceDisplay() {
+      balanceEl.textContent = `Coins: ${playerBalance}`;
+    }
 
-      // House edge: player wins ~45% chance
-      const outcome = Math.random();
-      balance -= bet; // subtract bet first
+    // ----------------------------
+    // DECK FUNCTIONS
+    // ----------------------------
+    const suits = ['♠','♥','♦','♣'];
+    const values = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
 
-      if (outcome < 0.45) {
-        // player wins
-        const winnings = Math.floor(bet * 1.9); // pay 1.9x
-        balance += winnings;
-        gameLog.innerHTML = `<p>${username} won ${winnings} coins!</p>`;
-      } else {
-        // house wins
-        gameLog.innerHTML = `<p>${username} lost ${bet} coins!</p>`;
+    function createDeck() {
+      deck = [];
+      for (let suit of suits) {
+        for (let value of values) {
+          deck.push({suit, value});
+        }
       }
+      deck = shuffle(deck);
+    }
 
-      updateBalanceDisplay();
-      betEl.value = "";
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i+1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+    function dealCard(hand) {
+      hand.push(deck.pop());
+      return hand[hand.length-1];
+    }
+
+    function calculateScore(hand) {
+      let score = 0;
+      let aces = 0;
+      for (let card of hand) {
+        if (['J','Q','K'].includes(card.value)) score += 10;
+        else if (card.value === 'A') {
+          score += 11;
+          aces++;
+        } else score += Number(card.value);
+      }
+      // Adjust Aces
+      while (score > 21 && aces > 0) {
+        score -= 10;
+        aces--;
+      }
+      return score;
+    }
+
+    function renderHands() {
+      document.getElementById('player-cards').textContent = playerHand.map(c => `${c.value}${c.suit}`).join(' ');
+      document.getElementById('dealer-cards').textContent = dealerHand.map(c => `${c.value}${c.suit}`).join(' ');
+      playerScore = calculateScore(playerHand);
+      dealerScore = calculateScore(dealerHand);
+      document.getElementById('player-score').textContent = playerScore;
+      document.getElementById('dealer-score').textContent = dealerScore;
+    }
+
+    // ----------------------------
+    // GAME LOGIC
+    // ----------------------------
+    let currentBet = 0;
+    let gameActive = false;
+
+    document.getElementById('start-btn').addEventListener('click', () => {
+      if (!currentUser) return alert("Login to play!");
+      const bet = Number(document.getElementById('bet-amount').value);
+      if (!bet || bet > playerBalance) return alert("Invalid bet!");
+      currentBet = bet;
+
+      playerHand = [];
+      dealerHand = [];
+      createDeck();
+      dealCard(playerHand);
+      dealCard(playerHand);
+      dealCard(dealerHand);
+      dealCard(dealerHand);
+      renderHands();
+      messageEl.textContent = "Game started! Hit or Stand?";
+      gameActive = true;
     });
 
-    // Initial display
-    updateBalanceDisplay();
+    document.getElementById('hit-btn').addEventListener('click', () => {
+      if (!gameActive) return;
+      dealCard(playerHand);
+      renderHands();
+      if (playerScore > 21) {
+        endGame("Bust! You lose.");
+      }
+    });
+
+    document.getElementById('stand-btn').addEventListener('click', () => {
+      if (!gameActive) return;
+      // Dealer hits until 17
+      while (dealerScore < 17) {
+        dealCard(dealerHand);
+        dealerScore = calculateScore(dealerHand);
+      }
+      renderHands();
+      if (dealerScore > 21 || playerScore > dealerScore) endGame("You win!");
+      else if (playerScore < dealerScore) endGame("Dealer wins!");
+      else endGame("Push!");
+    });
+
+    document.getElementById('double-btn').addEventListener('click', () => {
+      if (!gameActive) return;
+      if (currentBet*2 > playerBalance) return alert("Not enough coins to double!");
+      currentBet *= 2;
+      dealCard(playerHand);
+      renderHands();
+      if (playerScore > 21) endGame("Bust! You lose.");
+      else document.getElementById('stand-btn').click();
+    });
+
+    function endGame(msg) {
+      gameActive = false;
+      messageEl.textContent = msg;
+      if (msg.includes("win")) playerBalance += currentBet;
+      else if (msg.includes("lose") || msg.includes("Bust")) playerBalance -= currentBet;
+      updateBalanceDisplay();
+
+      // Save to localStorage
+      accounts[currentUser].balance = playerBalance;
+      localStorage.setItem('accounts', JSON.stringify(accounts));
+    }
   </script>
 </body>
 </html>
