@@ -2,308 +2,56 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>PlayCoins Simulator</title>
+  <title>Rocoins Gambling</title>
   <link rel="stylesheet" href="style.css">
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    #admin-panel { display: none; margin-top: 20px; border: 1px solid #ccc; padding: 10px; }
+    #games { margin-top: 20px; }
+    button { margin: 5px; }
+  </style>
 </head>
 <body>
-  <header>
-    <h1>PlayCoins Simulator</h1>
-    <div id="balance">Coins: 5</div>
-    <div id="logged-in-user">Not logged in</div>
-  </header>
 
-  <!-- Login / Register -->
-  <section class="auth-section">
-    <h2>Register / Login</h2>
-    <input id="reg-username" placeholder="Username" />
-    <input id="reg-password" type="password" placeholder="Password" />
-    <button id="register-btn">Register</button>
-    <br><br>
-    <input id="login-username" placeholder="Username" />
-    <input id="login-password" type="password" placeholder="Password" />
+  <h1>Rocoins Casino</h1>
+  <div id="balance">Coins: 0</div>
+
+  <!-- LOGIN / REGISTER -->
+  <div id="auth">
+    <input type="text" id="username" placeholder="Username">
+    <input type="password" id="password" placeholder="Password">
     <button id="login-btn">Login</button>
-  </section>
+    <button id="register-btn">Register</button>
+  </div>
 
   <!-- Deposit / Withdraw -->
-  <section class="controls">
-    <input id="amount" type="number" placeholder="Amount" />
-    <button id="deposit-btn">Deposit</button>
+  <div id="finance">
+    <button id="deposit-btn">Deposit Coins</button>
+    <button id="withdraw-btn">Withdraw Coins</button>
+  </div>
 
-    <div id="withdraw-container">
-      <p>To withdraw coins: Make a Gamepass with the amount of coins you entered and paste the link below.</p>
-      <input id="withdraw-link" placeholder="Paste your Roblox Gamepass link here" />
-      <button id="withdraw-btn">Request Withdraw</button>
-    </div>
-  </section>
+  <!-- Admin Panel -->
+  <div id="admin-panel">
+    <h3>Admin Panel (FF2DMD Only)</h3>
+    <input type="text" id="admin-target" placeholder="Target Username">
+    <input type="number" id="admin-coins" placeholder="Amount">
+    <button id="admin-add-btn">Add Coins</button>
+    <button id="admin-remove-btn">Remove Coins</button>
+  </div>
 
   <!-- Games -->
-  <section class="games">
+  <div id="games">
     <h2>Games</h2>
-    <ul>
-      <li><a href="games/blackjack.html">Blackjack</a></li>
-      <li><a href="games/crash.html">Crash</a></li>
-      <li><a href="games/crossroad.html">Crossroad</a></li>
-      <li><a href="games/dice.html">Dice</a></li>
-      <li><a href="games/mines.html">Mines</a></li>
-      <li><a href="games/cases.html">Cases</a></li>
-      <li><a href="games/upgrader.html">Upgrader</a></li>
-    </ul>
-  </section>
+    <button onclick="location.href='games/blackjack.html'">Blackjack</button>
+    <button onclick="location.href='games/crash.html'">Crash</button>
+    <button onclick="location.href='games/crossroad.html'">Crossroad</button>
+    <button onclick="location.href='games/dice.html'">Dice</button>
+    <button onclick="location.href='games/mines.html'">Mines</button>
+    <button onclick="location.href='games/cases.html'">Cases</button>
+    <button onclick="location.href='games/upgrader.html'">Upgrader</button>
+    <button onclick="location.href='logs/logs.html'">Transaction Logs</button>
+  </div>
 
-  <!-- Admin Panel (FF2DMD only) -->
-  <section class="admin-section" id="admin-panel" style="display:none;">
-    <h2>Admin Panel (FF2DMD)</h2>
-
-    <!-- Pending Deposits -->
-    <h3>Pending Deposits</h3>
-    <ul id="pending-deposits"></ul>
-
-    <!-- Pending Withdrawals -->
-    <h3>Pending Withdrawals</h3>
-    <ul id="pending-withdrawals"></ul>
-
-    <!-- Manual Add/Remove Coins -->
-    <h3>Add/Remove Coins Manually</h3>
-    <input id="manual-username" placeholder="Username" />
-    <input id="manual-amount" type="number" placeholder="Amount (+ or -)" />
-    <button id="manual-add-btn">Apply Coins</button>
-
-    <!-- Clear Logs -->
-    <h3>Clear Transaction Logs</h3>
-    <button id="clear-logs-btn">Clear Log Display</button>
-  </section>
-
-  <!-- Transaction Log -->
-  <div id="log"></div>
-
-  <script>
-    // ----------------------------
-    // GLOBAL VARIABLES
-    // ----------------------------
-    const registerBtn = document.getElementById('register-btn');
-    const loginBtn = document.getElementById('login-btn');
-    const regUsernameEl = document.getElementById('reg-username');
-    const regPasswordEl = document.getElementById('reg-password');
-    const loginUsernameEl = document.getElementById('login-username');
-    const loginPasswordEl = document.getElementById('login-password');
-    const loggedInUserEl = document.getElementById('logged-in-user');
-    const balanceEl = document.getElementById('balance');
-    const logEl = document.getElementById('log');
-    const amountEl = document.getElementById('amount');
-    const clearLogsBtn = document.getElementById('clear-logs-btn');
-
-    let accounts = JSON.parse(localStorage.getItem('accounts')) || {};
-    let currentUser = localStorage.getItem('currentUser') || null;
-
-    let pendingDeposits = JSON.parse(localStorage.getItem('pendingDeposits')) || [];
-    let pendingWithdrawals = JSON.parse(localStorage.getItem('pendingWithdrawals')) || [];
-
-    // LOGS CLEAR FLAG
-    let logsCleared = false;
-
-    // ----------------------------
-    // UTILITY FUNCTIONS
-    // ----------------------------
-    function loadAccounts() { accounts = JSON.parse(localStorage.getItem('accounts')) || {}; return accounts; }
-    function saveAccounts() { localStorage.setItem('accounts', JSON.stringify(accounts)); }
-    function getUserData(username = currentUser) { loadAccounts(); return accounts[username] || null; }
-
-    function updateBalanceDisplay() {
-      const userData = getUserData();
-      balanceEl.textContent = `Coins: ${userData ? userData.balance : 0}`;
-    }
-
-    function updateLoggedInDisplay() {
-      loggedInUserEl.textContent = currentUser ? `Logged in as: ${currentUser}` : "Not logged in";
-      document.getElementById('admin-panel').style.display = (currentUser === "FF2DMD") ? "block" : "none";
-    }
-
-    updateLoggedInDisplay();
-    updateBalanceDisplay();
-
-    // ----------------------------
-    // REGISTER / LOGIN
-    // ----------------------------
-    registerBtn.addEventListener('click', () => {
-      const username = regUsernameEl.value.trim();
-      const password = regPasswordEl.value.trim();
-      if (!username || !password) return alert("Enter both username and password");
-      if (accounts[username]) return alert("Username exists");
-      accounts[username] = { password, balance: 5, transactionLog: [] };
-      saveAccounts();
-      alert(`Account ${username} registered!`);
-      regUsernameEl.value = '';
-      regPasswordEl.value = '';
-    });
-
-    loginBtn.addEventListener('click', () => {
-      const username = loginUsernameEl.value.trim();
-      const password = loginPasswordEl.value.trim();
-      if (!username || !password) return alert("Enter both username and password");
-      const userData = getUserData(username);
-      if (!userData) return alert("Account does not exist");
-      if (userData.password !== password) return alert("Incorrect password");
-
-      currentUser = username;
-      localStorage.setItem('currentUser', currentUser);
-      updateLoggedInDisplay();
-      updateBalanceDisplay();
-      renderTransactionLog();
-      renderPendingLists();
-      loginUsernameEl.value = '';
-      loginPasswordEl.value = '';
-      alert(`Logged in as ${username}`);
-    });
-
-    // ----------------------------
-    // TRANSACTION LOGS
-    // ----------------------------
-    function addTransaction(username, type, amount) {
-      const userData = getUserData(username);
-      if (!userData) return;
-      const time = new Date().toLocaleString();
-      userData.transactionLog.push({ type, amount, time });
-      accounts[username] = userData;
-      saveAccounts();
-      if (username === currentUser) renderTransactionLog();
-    }
-
-    function renderTransactionLog() {
-      const userData = getUserData();
-      if (!userData) return;
-      logEl.innerHTML = '';
-      // Show all logs normally if not cleared
-      userData.transactionLog.forEach(t => {
-        const p = document.createElement('p');
-        p.textContent = `[${t.time}] ${t.type}: ${t.amount} coins (User: ${currentUser})`;
-        logEl.prepend(p);
-      });
-    }
-
-    // ----------------------------
-    // PENDING DEPOSITS / WITHDRAWALS
-    // ----------------------------
-    function renderPendingLists() {
-      if (currentUser !== "FF2DMD") return;
-      const pendingDepositsEl = document.getElementById('pending-deposits');
-      const pendingWithdrawalsEl = document.getElementById('pending-withdrawals');
-
-      pendingDepositsEl.innerHTML = '';
-      pendingDeposits.forEach((item, index) => {
-        const li = document.createElement('li');
-        li.textContent = `[${item.time}] ${item.username} wants to deposit ${item.amount} coins `;
-        const approveBtn = document.createElement('button');
-        approveBtn.textContent = "Approve";
-        approveBtn.addEventListener('click', () => approveDeposit(index));
-        li.appendChild(approveBtn);
-        pendingDepositsEl.appendChild(li);
-      });
-
-      pendingWithdrawalsEl.innerHTML = '';
-      pendingWithdrawals.forEach((item, index) => {
-        const li = document.createElement('li');
-        li.innerHTML = `[${item.time}] ${item.username} requests withdrawal of ${item.amount} coins. Link: <a href="${item.link}" target="_blank">${item.link}</a>`;
-        const approveBtn = document.createElement('button');
-        approveBtn.textContent = "Approve";
-        approveBtn.addEventListener('click', () => approveWithdraw(index));
-        li.appendChild(approveBtn);
-        pendingWithdrawalsEl.appendChild(li);
-      });
-    }
-
-    function approveDeposit(index) {
-      const item = pendingDeposits[index];
-      const userData = getUserData(item.username);
-      if (!userData) return alert("User does not exist");
-      userData.balance += item.amount;
-      addTransaction(item.username, "Deposit (Approved)", item.amount);
-      accounts[item.username] = userData;
-      saveAccounts();
-      pendingDeposits.splice(index, 1);
-      localStorage.setItem('pendingDeposits', JSON.stringify(pendingDeposits));
-      renderPendingLists();
-      updateBalanceDisplay();
-    }
-
-    function approveWithdraw(index) {
-      const item = pendingWithdrawals[index];
-      const userData = getUserData(item.username);
-      if (!userData) return alert("User does not exist");
-      userData.balance -= item.amount;
-      addTransaction(item.username, "Withdrawal (Approved)", item.amount);
-      accounts[item.username] = userData;
-      saveAccounts();
-      pendingWithdrawals.splice(index, 1);
-      localStorage.setItem('pendingWithdrawals', JSON.stringify(pendingWithdrawals));
-      renderPendingLists();
-      updateBalanceDisplay();
-    }
-
-    // ----------------------------
-    // DEPOSIT / WITHDRAW REQUESTS
-    // ----------------------------
-    document.getElementById('deposit-btn').addEventListener('click', () => {
-      if (!currentUser) return alert("Please login!");
-      const amount = Number(amountEl.value);
-      if (!amount || amount <= 0) return alert("Enter valid amount");
-      pendingDeposits.push({ username: currentUser, amount, time: new Date().toLocaleString() });
-      localStorage.setItem('pendingDeposits', JSON.stringify(pendingDeposits));
-      alert("Deposit sent for admin approval!");
-      amountEl.value = '';
-      renderPendingLists();
-    });
-
-    document.getElementById('withdraw-btn').addEventListener('click', () => {
-      const link = document.getElementById('withdraw-link').value.trim();
-      const amount = Number(amountEl.value);
-      if (!link) return alert("Paste your Roblox Gamepass link!");
-      if (!link.startsWith("https://create.roblox.com/dashboard/creations/")) return alert("Invalid Gamepass link!");
-      if (!amount || amount <= 0) return alert("Enter a valid amount");
-
-      pendingWithdrawals.push({ link, amount, username: currentUser || "Unknown", time: new Date().toLocaleString() });
-      localStorage.setItem('pendingWithdrawals', JSON.stringify(pendingWithdrawals));
-      alert("Withdrawal request submitted! Admin will review your Gamepass link.");
-      amountEl.value = '';
-      document.getElementById('withdraw-link').value = '';
-      renderPendingLists();
-    });
-
-    renderPendingLists();
-
-    // ----------------------------
-    // ADMIN MANUAL ADD/REMOVE
-    // ----------------------------
-    document.getElementById('manual-add-btn').addEventListener('click', () => {
-      if (currentUser !== "FF2DMD") return alert("Only FF2DMD can use this panel");
-      const targetUser = document.getElementById('manual-username').value.trim();
-      const amount = Number(document.getElementById('manual-amount').value);
-      if (!targetUser || !amount) return alert("Enter valid username and amount");
-      const userData = getUserData(targetUser);
-      if (!userData) return alert("User does not exist");
-      userData.balance += amount;
-      addTransaction(targetUser, amount > 0 ? "Admin Add" : "Admin Remove", amount);
-      accounts[targetUser] = userData;
-      saveAccounts();
-      alert(`${amount > 0 ? "Added" : "Removed"} ${Math.abs(amount)} coins for ${targetUser}`);
-      document.getElementById('manual-username').value = '';
-      document.getElementById('manual-amount').value = '';
-      updateBalanceDisplay();
-      renderTransactionLog();
-    });
-
-    // ----------------------------
-    // CLEAR LOGS (ONE-TIME VISUAL)
-    // ----------------------------
-    clearLogsBtn.addEventListener('click', () => {
-      if (currentUser !== "FF2DMD") return alert("Only FF2DMD can clear logs");
-      if (!logsCleared) {
-        logsCleared = true;
-        logEl.innerHTML = '';
-        alert("Transaction logs visually cleared. New transactions will appear normally.");
-      } else {
-        alert("Logs have already been cleared once. New transactions will appear normally.");
-      }
-    });
-  </script>
+  <script src="script.js"></script>
 </body>
 </html>
