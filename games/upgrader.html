@@ -1,1 +1,111 @@
-e
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Upgrader</title>
+  <link rel="stylesheet" href="../style.css">
+  <style>
+    #game-display {
+      margin-top: 20px;
+    }
+    #upgrade-btn, #cashout-btn {
+      margin: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Upgrader</h1>
+  <div id="balance">Coins: 0</div>
+  <div id="message"></div>
+
+  <div id="controls">
+    <input type="number" id="bet-amount" placeholder="Bet coins" min="1">
+    <button id="start-btn">Start Upgrade</button>
+    <button id="upgrade-btn" disabled>Upgrade</button>
+    <button id="cashout-btn" disabled>Cash Out</button>
+  </div>
+
+  <div id="game-display">
+    <div id="item-level">Item Level: 0</div>
+    <div id="success-chance">Success Chance: 0%</div>
+  </div>
+
+  <script>
+    const balanceEl = document.getElementById('balance');
+    const messageEl = document.getElementById('message');
+    const itemLevelEl = document.getElementById('item-level');
+    const chanceEl = document.getElementById('success-chance');
+
+    const accounts = JSON.parse(localStorage.getItem('accounts')) || {};
+    const currentUser = localStorage.getItem('currentUser');
+
+    let playerBalance = currentUser && accounts[currentUser] ? accounts[currentUser].balance : 0;
+    updateBalance();
+
+    let betAmount = 0;
+    let level = 0;
+    let successChance = 0;
+    let gameActive = false;
+
+    function updateBalance(){ balanceEl.textContent = `Coins: ${playerBalance}`; }
+
+    document.getElementById('start-btn').onclick = () => {
+      if(!currentUser) return alert("Login first!");
+      betAmount = Number(document.getElementById('bet-amount').value);
+      if(!betAmount || betAmount > playerBalance) return alert("Invalid bet");
+
+      level = 0;
+      gameActive = true;
+      playerBalance -= betAmount; // pay to start
+      accounts[currentUser].balance = playerBalance;
+      localStorage.setItem('accounts', JSON.stringify(accounts));
+
+      updateBalance();
+      itemLevelEl.textContent = `Item Level: ${level}`;
+      updateChance();
+
+      messageEl.textContent = "Try upgrading your item!";
+      document.getElementById('upgrade-btn').disabled = false;
+      document.getElementById('cashout-btn').disabled = false;
+      document.getElementById('start-btn').disabled = true;
+    };
+
+    function updateChance(){
+      // House-favored: success drops sharply as level increases
+      successChance = Math.max(5, 80 - level*15); // can't go below 5%
+      chanceEl.textContent = `Success Chance: ${successChance}%`;
+    }
+
+    document.getElementById('upgrade-btn').onclick = () => {
+      if(!gameActive) return;
+      const roll = Math.random() * 100;
+      if(roll <= successChance){
+        level++;
+        messageEl.textContent = `Upgrade success! Level is now ${level}`;
+        itemLevelEl.textContent = `Item Level: ${level}`;
+        updateChance();
+      } else {
+        messageEl.textContent = `💥 Upgrade failed! Lost bet coins.`;
+        gameActive = false;
+        document.getElementById('upgrade-btn').disabled = true;
+        document.getElementById('cashout-btn').disabled = true;
+      }
+    };
+
+    document.getElementById('cashout-btn').onclick = () => {
+      if(!gameActive) return;
+      const winnings = betAmount + level * betAmount; // reward = bet + level multiplier
+      playerBalance += winnings;
+      accounts[currentUser].balance = playerBalance;
+      localStorage.setItem('accounts', JSON.stringify(accounts));
+
+      messageEl.textContent = `Cashed out! Won ${winnings} coins at level ${level}`;
+      gameActive = false;
+      updateBalance();
+      document.getElementById('upgrade-btn').disabled = true;
+      document.getElementById('cashout-btn').disabled = true;
+      document.getElementById('start-btn').disabled = false;
+    };
+  </script>
+</body>
+</html>
