@@ -15,12 +15,10 @@
   <!-- Login / Register -->
   <section class="auth-section">
     <h2>Register / Login</h2>
-    <!-- Register -->
     <input id="reg-username" placeholder="Username" />
     <input id="reg-password" type="password" placeholder="Password" />
     <button id="register-btn">Register</button>
     <br><br>
-    <!-- Login -->
     <input id="login-username" placeholder="Username" />
     <input id="login-password" type="password" placeholder="Password" />
     <button id="login-btn">Login</button>
@@ -69,6 +67,10 @@
     <input id="manual-username" placeholder="Username" />
     <input id="manual-amount" type="number" placeholder="Amount (+ or -)" />
     <button id="manual-add-btn">Apply Coins</button>
+
+    <!-- Clear Logs -->
+    <h3>Clear Transaction Logs</h3>
+    <button id="clear-logs-btn">Clear All Logs</button>
   </section>
 
   <!-- Transaction Log -->
@@ -90,12 +92,28 @@
     let accounts = JSON.parse(localStorage.getItem('accounts')) || {};
     let currentUser = localStorage.getItem('currentUser') || null;
 
+    function loadAccounts() {
+      accounts = JSON.parse(localStorage.getItem('accounts')) || {};
+      return accounts;
+    }
+
+    function saveAccounts() {
+      localStorage.setItem('accounts', JSON.stringify(accounts));
+    }
+
+    function getUserData(username = currentUser) {
+      loadAccounts();
+      return accounts[username] || null;
+    }
+
+    function updateBalanceDisplay() {
+      const userData = getUserData();
+      document.getElementById('balance').textContent = `Coins: ${userData ? userData.balance : 0}`;
+    }
+
     function updateLoggedInDisplay() {
       loggedInUserEl.textContent = currentUser ? `Logged in as: ${currentUser}` : "Not logged in";
-
-      // Show admin panel only for FF2DMD
-      const adminPanel = document.getElementById('admin-panel');
-      adminPanel.style.display = (currentUser === "FF2DMD") ? "block" : "none";
+      document.getElementById('admin-panel').style.display = (currentUser === "FF2DMD") ? "block" : "none";
     }
 
     // Register
@@ -106,7 +124,7 @@
       if (accounts[username]) return alert("Username already exists");
 
       accounts[username] = { password, balance: 5, transactionLog: [] };
-      localStorage.setItem('accounts', JSON.stringify(accounts));
+      saveAccounts();
       alert(`Account ${username} registered! You can now login.`);
       regUsernameEl.value = '';
       regPasswordEl.value = '';
@@ -132,23 +150,22 @@
     });
 
     updateLoggedInDisplay();
+    updateBalanceDisplay();
 
     // ----------------------------
-    // BALANCE & TRANSACTIONS
+    // TRANSACTIONS
     // ----------------------------
-    const balanceEl = document.getElementById('balance');
-    const amountEl = document.getElementById('amount');
     const logEl = document.getElementById('log');
+    const amountEl = document.getElementById('amount');
 
-    function getUserData(username = currentUser) {
-      if (!username) return null;
-      accounts = JSON.parse(localStorage.getItem('accounts')) || {};
-      return accounts[username];
-    }
-
-    function updateBalanceDisplay() {
-      const userData = getUserData();
-      balanceEl.textContent = `Coins: ${userData ? userData.balance : 0}`;
+    function addTransaction(username, type, amount) {
+      const userData = getUserData(username);
+      if (!userData) return;
+      const time = new Date().toLocaleString();
+      userData.transactionLog.push({ type, amount, time });
+      accounts[username] = userData;
+      saveAccounts();
+      if (username === currentUser) renderTransactionLog();
     }
 
     function renderTransactionLog() {
@@ -160,16 +177,6 @@
         p.textContent = `[${t.time}] ${t.type}: ${t.amount} coins (User: ${currentUser})`;
         logEl.prepend(p);
       });
-    }
-
-    function addTransaction(username, type, amount) {
-      const userData = getUserData(username);
-      if (!userData) return;
-      const time = new Date().toLocaleString();
-      userData.transactionLog.push({ type, amount, time });
-      accounts[username] = userData;
-      localStorage.setItem('accounts', JSON.stringify(accounts));
-      if (username === currentUser) renderTransactionLog();
     }
 
     // ----------------------------
@@ -209,27 +216,39 @@
 
     function approveDeposit(index) {
       const item = pendingDeposits[index];
-      accounts[item.username].balance += item.amount;
+      const userData = getUserData(item.username);
+      if (!userData) return alert("User does not exist");
+
+      userData.balance += item.amount;
       addTransaction(item.username, "Deposit (Approved)", item.amount);
+
+      accounts[item.username] = userData;
+      saveAccounts();
       pendingDeposits.splice(index, 1);
       localStorage.setItem('pendingDeposits', JSON.stringify(pendingDeposits));
-      localStorage.setItem('accounts', JSON.stringify(accounts));
       renderPendingLists();
       updateBalanceDisplay();
     }
 
     function approveWithdraw(index) {
       const item = pendingWithdrawals[index];
-      accounts[item.username].balance -= item.amount;
+      const userData = getUserData(item.username);
+      if (!userData) return alert("User does not exist");
+
+      userData.balance -= item.amount;
       addTransaction(item.username, "Withdrawal (Approved)", item.amount);
+
+      accounts[item.username] = userData;
+      saveAccounts();
       pendingWithdrawals.splice(index, 1);
       localStorage.setItem('pendingWithdrawals', JSON.stringify(pendingWithdrawals));
-      localStorage.setItem('accounts', JSON.stringify(accounts));
       renderPendingLists();
       updateBalanceDisplay();
     }
 
-    // Deposit request
+    // ----------------------------
+    // DEPOSIT / WITHDRAW REQUESTS
+    // ----------------------------
     document.getElementById('deposit-btn').addEventListener('click', () => {
       if (!currentUser) return alert("Please login first!");
       const amount = Number(amountEl.value);
@@ -242,7 +261,6 @@
       renderPendingLists();
     });
 
-    // Withdraw request with Gamepass link
     document.getElementById('withdraw-btn').addEventListener('click', () => {
       const link = document.getElementById('withdraw-link').value.trim();
       const amount = Number(amountEl.value);
@@ -270,33 +288,43 @@
     renderPendingLists();
 
     // ----------------------------
-    // MANUAL ADD/REMOVE COINS
+    // ADMIN MANUAL ADD/REMOVE
     // ----------------------------
     const manualAddBtn = document.getElementById('manual-add-btn');
-    const manualUsernameEl = document.getElementById('manual-username');
-    const manualAmountEl = document.getElementById('manual-amount');
-
     manualAddBtn.addEventListener('click', () => {
       if (currentUser !== "FF2DMD") return alert("Only FF2DMD can use this panel");
 
-      const targetUser = manualUsernameEl.value.trim();
-      const amount = Number(manualAmountEl.value);
+      const targetUser = document.getElementById('manual-username').value.trim();
+      const amount = Number(document.getElementById('manual-amount').value);
       if (!targetUser || !amount) return alert("Enter valid username and amount");
-      if (!accounts[targetUser]) return alert("User does not exist");
+      const userData = getUserData(targetUser);
+      if (!userData) return alert("User does not exist");
 
-      accounts[targetUser].balance += amount;
+      userData.balance += amount;
       addTransaction(targetUser, amount > 0 ? "Admin Add" : "Admin Remove", amount);
-      localStorage.setItem('accounts', JSON.stringify(accounts));
+      accounts[targetUser] = userData;
+      saveAccounts();
 
       alert(`${amount > 0 ? "Added" : "Removed"} ${Math.abs(amount)} coins for ${targetUser}`);
-      manualUsernameEl.value = '';
-      manualAmountEl.value = '';
+      document.getElementById('manual-username').value = '';
+      document.getElementById('manual-amount').value = '';
       updateBalanceDisplay();
       renderTransactionLog();
     });
 
-    updateBalanceDisplay();
-    renderTransactionLog();
+    // ----------------------------
+    // CLEAR LOGS BUTTON
+    // ----------------------------
+    const clearLogsBtn = document.getElementById('clear-logs-btn');
+    clearLogsBtn.addEventListener('click', () => {
+      if (currentUser !== "FF2DMD") return alert("Only FF2DMD can clear logs");
+      Object.keys(accounts).forEach(user => {
+        accounts[user].transactionLog = [];
+      });
+      saveAccounts();
+      renderTransactionLog();
+      alert("All transaction logs cleared!");
+    });
   </script>
 </body>
 </html>
