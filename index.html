@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+  <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -210,25 +210,45 @@
       });
     }
 
-    function approveDeposit(index) {
-      const item = pendingDeposits[index];
-      accounts[item.username].balance += item.amount;
-      addTransaction(item.username, "Deposit (Approved)", item.amount);
-      pendingDeposits.splice(index, 1);
-      localStorage.setItem('pendingDeposits', JSON.stringify(pendingDeposits));
-      localStorage.setItem('accounts', JSON.stringify(accounts));
-      renderPendingLists();
-      updateBalanceDisplay();
-    }
-
-    function approveWithdraw(index) {
-      const item = pendingWithdrawals[index];
-      accounts[item.username].balance += item.amount;
-      addTransaction(item.username, "Deposit (Approved)", item.amount);
+      function approveDeposit(index) {
+        const item = pendingDeposits[index];
       
-      if (item.username === currentUser) {
-        localStorage.setItem('playCoins', accounts[item.username].balance);
-        balance = accounts[item.username].balance;
+        accounts[item.username].balance += item.amount;
+        addTransaction(item.username, "Deposit (Approved)", item.amount);
+
+        // 🔑 SYNC GLOBAL BALANCE IF USER IS LOGGED IN
+        if (item.username === currentUser) {
+          balance = accounts[item.username].balance;
+          localStorage.setItem('playCoins', balance);
+        }
+
+        pendingDeposits.splice(index, 1);
+        localStorage.setItem('pendingDeposits', JSON.stringify(pendingDeposits));
+        localStorage.setItem('accounts', JSON.stringify(accounts));
+
+        renderPendingLists();
+        updateBalanceDisplay();
+      }
+
+
+      function approveWithdraw(index) {
+        const item = pendingWithdrawals[index];
+
+        accounts[item.username].balance -= item.amount;
+        addTransaction(item.username, "Withdrawal (Approved)", item.amount);
+
+        // 🔑 SYNC GLOBAL BALANCE IF USER IS LOGGED IN
+        if (item.username === currentUser) {
+          balance = accounts[item.username].balance;
+          localStorage.setItem('playCoins', balance);
+        }
+
+        pendingWithdrawals.splice(index, 1);
+        localStorage.setItem('pendingWithdrawals', JSON.stringify(pendingWithdrawals));
+        localStorage.setItem('accounts', JSON.stringify(accounts));
+
+        renderPendingLists();
+        updateBalanceDisplay();
       }
 
       pendingWithdrawals.splice(index, 1);
@@ -288,6 +308,11 @@
       accounts[targetUser].balance += amount;
       addTransaction(targetUser, amount > 0 ? "Admin Add" : "Admin Remove", amount);
       localStorage.setItem('accounts', JSON.stringify(accounts));
+
+      if (targetUser === currentUser) {
+        balance = accounts[targetUser].balance;
+        localStorage.setItem('playCoins', balance);
+      }
       
       if (targetUser === currentUser) {
         localStorage.setItem('playCoins', accounts[targetUser].balance);
