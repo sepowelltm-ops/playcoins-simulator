@@ -1,83 +1,156 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Crash</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<title>Crash</title>
+
+<style>
+body {
+  background: #0e0e0e;
+  color: #fff;
+  font-family: Arial, sans-serif;
+  margin: 0;
+}
+
+.container {
+  max-width: 420px;
+  margin: 80px auto;
+  background: #151515;
+  padding: 25px;
+  border-radius: 10px;
+  text-align: center;
+}
+
+h1 {
+  margin-top: 0;
+  font-size: 28px;
+}
+
+.balance {
+  margin-bottom: 15px;
+  color: #bbb;
+}
+
+.multiplier {
+  font-size: 48px;
+  font-weight: bold;
+  margin: 25px 0;
+}
+
+input {
+  width: 100%;
+  padding: 10px;
+  font-size: 16px;
+  border-radius: 6px;
+  border: none;
+  margin-bottom: 12px;
+}
+
+button {
+  width: 100%;
+  padding: 12px;
+  font-size: 16px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  margin-bottom: 10px;
+}
+
+#startBtn {
+  background: #2ecc71;
+  color: #000;
+}
+
+#cashoutBtn {
+  background: #f1c40f;
+  color: #000;
+}
+
+#cashoutBtn:disabled {
+  background: #555;
+  cursor: not-allowed;
+}
+
+.status {
+  margin-top: 10px;
+  color: #aaa;
+}
+</style>
 </head>
+
 <body>
 
-<h1>Crash</h1>
+<div class="container">
+  <h1>Crash</h1>
 
-<p>Balance: <span id="balance">0</span> coins</p>
+  <div class="balance">
+    Balance: <span id="balance">0</span> coins
+  </div>
 
-<input type="number" id="betAmount" placeholder="Bet amount" min="1">
-<br><br>
+  <div class="multiplier" id="multiplier">1.00x</div>
 
-<button id="startBtn">Start</button>
-<button id="cashoutBtn" disabled>Cash Out</button>
+  <input type="number" id="betAmount" placeholder="Bet amount" min="1">
 
-<h2 id="multiplier">1.00x</h2>
-<h3 id="status"></h3>
+  <button id="startBtn">Start</button>
+  <button id="cashoutBtn" disabled>Cash Out</button>
 
-<script src="script.js"></script>
+  <div class="status" id="status"></div>
+</div>
+
 <script>
-let crashInterval;
+let interval;
 let multiplier = 1.0;
 let crashed = false;
 let bet = 0;
 let crashPoint = 0;
 
-const startBtn = document.getElementById("startBtn");
-const cashoutBtn = document.getElementById("cashoutBtn");
-const multiplierText = document.getElementById("multiplier");
-const statusText = document.getElementById("status");
-
 function getBalance() {
   return parseInt(localStorage.getItem("balance") || "5");
 }
 
-function setBalance(amount) {
-  localStorage.setItem("balance", amount);
-  document.getElementById("balance").textContent = amount;
+function setBalance(v) {
+  localStorage.setItem("balance", v);
+  document.getElementById("balance").textContent = v;
 }
 
-function generateCrashPoint(betAmount) {
-  // HOUSE EDGE:
-  // Higher bet = lower average crash
+function generateCrashPoint(bet) {
   const base = Math.random() * 3 + 1;
-  const penalty = Math.min(betAmount / 20, 1.5);
+  const penalty = Math.min(bet / 25, 1.7);
   return Math.max(1.05, base - penalty);
 }
+
+const startBtn = document.getElementById("startBtn");
+const cashoutBtn = document.getElementById("cashoutBtn");
+const multText = document.getElementById("multiplier");
+const statusText = document.getElementById("status");
 
 startBtn.onclick = () => {
   bet = parseInt(document.getElementById("betAmount").value);
   if (!bet || bet <= 0) return alert("Invalid bet");
 
-  let balance = getBalance();
-  if (bet > balance) return alert("Not enough coins");
+  let bal = getBalance();
+  if (bet > bal) return alert("Not enough coins");
 
-  // Deduct bet
-  setBalance(balance - bet);
+  setBalance(bal - bet);
 
   multiplier = 1.0;
   crashed = false;
   crashPoint = generateCrashPoint(bet);
 
-  multiplierText.textContent = "1.00x";
+  multText.textContent = "1.00x";
   statusText.textContent = "Running...";
-  cashoutBtn.disabled = false;
   startBtn.disabled = true;
+  cashoutBtn.disabled = false;
 
-  crashInterval = setInterval(() => {
+  interval = setInterval(() => {
     multiplier += 0.01 + multiplier * 0.002;
-    multiplierText.textContent = multiplier.toFixed(2) + "x";
+    multText.textContent = multiplier.toFixed(2) + "x";
 
     if (multiplier >= crashPoint) {
-      clearInterval(crashInterval);
+      clearInterval(interval);
       crashed = true;
-      cashoutBtn.disabled = true;
       startBtn.disabled = false;
+      cashoutBtn.disabled = true;
       statusText.textContent = "💥 Crashed at " + multiplier.toFixed(2) + "x";
     }
   }, 100);
@@ -86,17 +159,18 @@ startBtn.onclick = () => {
 cashoutBtn.onclick = () => {
   if (crashed) return;
 
-  clearInterval(crashInterval);
+  clearInterval(interval);
   cashoutBtn.disabled = true;
   startBtn.disabled = false;
 
   const win = Math.floor(bet * multiplier);
   setBalance(getBalance() + win);
 
-  statusText.textContent = "💰 Cashed out at " + multiplier.toFixed(2) + "x (+" + win + ")";
+  statusText.textContent =
+    "💰 Cashed out at " + multiplier.toFixed(2) + "x (+" + win + ")";
 };
 
-document.getElementById("balance").textContent = getBalance();
+setBalance(getBalance());
 </script>
 
 </body>
