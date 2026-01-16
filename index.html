@@ -12,23 +12,30 @@
     <div id="logged-in-user">Not logged in</div>
   </header>
 
+  <!-- Login / Register Section -->
   <section class="auth-section">
     <h2>Register / Login</h2>
+
+    <!-- Register -->
     <input id="reg-username" placeholder="Username" />
     <input id="reg-password" type="password" placeholder="Password" />
     <button id="register-btn">Register</button>
     <br><br>
+
+    <!-- Login -->
     <input id="login-username" placeholder="Username" />
     <input id="login-password" type="password" placeholder="Password" />
     <button id="login-btn">Login</button>
   </section>
 
+  <!-- Deposit / Withdraw -->
   <section class="controls">
     <input id="amount" type="number" placeholder="Amount" />
     <button id="deposit-btn">Deposit</button>
     <button id="withdraw-btn">Withdraw</button>
   </section>
 
+  <!-- Games -->
   <section class="games">
     <h2>Games</h2>
     <ul>
@@ -42,12 +49,22 @@
     </ul>
   </section>
 
+  <!-- Admin Panel (hidden unless FF2DMD) -->
+  <section class="admin-section" id="admin-panel" style="display:none;">
+    <h2>Admin: Add Coins to User</h2>
+    <input id="admin-username" placeholder="Username" />
+    <input id="admin-amount" type="number" placeholder="Amount" />
+    <button id="admin-add-btn">Add Coins</button>
+  </section>
+
+  <!-- Transaction Logs -->
   <div id="log"></div>
 
+  <!-- Scripts -->
   <script src="script.js"></script>
   <script>
     // ----------------------------
-    // SIMPLE CLIENT-SIDE LOGIN/REGISTER
+    // LOGIN / REGISTER SYSTEM
     // ----------------------------
     const registerBtn = document.getElementById('register-btn');
     const loginBtn = document.getElementById('login-btn');
@@ -57,16 +74,22 @@
     const loginPasswordEl = document.getElementById('login-password');
     const loggedInUserEl = document.getElementById('logged-in-user');
 
-    let currentUser = null; // store logged in username
-
-    // Load accounts from localStorage
+    let currentUser = localStorage.getItem('currentUser') || null;
     let accounts = JSON.parse(localStorage.getItem('accounts')) || {};
 
     function updateLoggedInDisplay() {
       loggedInUserEl.textContent = currentUser ? `Logged in as: ${currentUser}` : "Not logged in";
+
+      // Show admin panel only for FF2DMD
+      const adminPanel = document.getElementById('admin-panel');
+      if (currentUser === "FF2DMD") {
+        adminPanel.style.display = "block";
+      } else {
+        adminPanel.style.display = "none";
+      }
     }
 
-    // Register account
+    // Register
     registerBtn.addEventListener('click', () => {
       const username = regUsernameEl.value.trim();
       const password = regPasswordEl.value.trim();
@@ -80,7 +103,7 @@
       regPasswordEl.value = '';
     });
 
-    // Login account
+    // Login
     loginBtn.addEventListener('click', () => {
       const username = loginUsernameEl.value.trim();
       const password = loginPasswordEl.value.trim();
@@ -92,21 +115,17 @@
       localStorage.setItem('currentUser', currentUser);
       updateLoggedInDisplay();
       alert(`Logged in as ${username}`);
-
       loginUsernameEl.value = '';
       loginPasswordEl.value = '';
       updateBalanceDisplay();
       renderTransactionLog();
     });
 
-    // Auto-login if user was previously logged in
-    currentUser = localStorage.getItem('currentUser');
     updateLoggedInDisplay();
 
     // ----------------------------
     // BALANCE & TRANSACTIONS
     // ----------------------------
-
     const balanceEl = document.getElementById('balance');
     const amountEl = document.getElementById('amount');
     const logEl = document.getElementById('log');
@@ -119,7 +138,10 @@
 
     function updateBalanceDisplay() {
       const userData = getUserData();
-      if (!userData) return;
+      if (!userData) {
+        balanceEl.textContent = "Coins: 0";
+        return;
+      }
       balanceEl.textContent = `Coins: ${userData.balance}`;
     }
 
@@ -175,6 +197,37 @@
 
     updateBalanceDisplay();
     renderTransactionLog();
+
+    // ----------------------------
+    // ADMIN PANEL (FF2DMD ONLY)
+    // ----------------------------
+    const adminAddBtn = document.getElementById('admin-add-btn');
+    const adminUsernameEl = document.getElementById('admin-username');
+    const adminAmountEl = document.getElementById('admin-amount');
+
+    adminAddBtn.addEventListener('click', () => {
+      if (currentUser !== "FF2DMD") return alert("You cannot use this panel");
+
+      const targetUser = adminUsernameEl.value.trim();
+      const amount = Number(adminAmountEl.value);
+      if (!targetUser || !amount || amount <= 0) return alert("Enter valid username and amount");
+
+      if (!accounts[targetUser]) return alert("User does not exist");
+
+      accounts[targetUser].balance += amount;
+      const time = new Date().toLocaleString();
+      accounts[targetUser].transactionLog.push({ type: "Admin Add", amount, time });
+      localStorage.setItem('accounts', JSON.stringify(accounts));
+
+      alert(`Added ${amount} coins to ${targetUser}`);
+
+      // Update display if current user is the one updated
+      if (currentUser === targetUser) updateBalanceDisplay();
+      renderTransactionLog();
+
+      adminUsernameEl.value = '';
+      adminAmountEl.value = '';
+    });
   </script>
 </body>
 </html>
