@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Blackjack</title>
+  <title>Blackjack - House Advantage</title>
   <link rel="stylesheet" href="../style.css">
 </head>
 <body>
@@ -32,29 +32,21 @@
 
   <script>
     // ----------------------------
-    // GLOBALS
+    // GLOBAL VARIABLES
     // ----------------------------
-    let playerHand = [];
-    let dealerHand = [];
-    let deck = [];
-    let playerScore = 0;
-    let dealerScore = 0;
-    let dealerHiddenCard = null;
-    let playerBalance = 0;
+    let playerHand = [], dealerHand = [], deck = [], dealerHiddenCard = null;
+    let playerScore = 0, dealerScore = 0, currentBet = 0;
+    let gameActive = false;
     const balanceEl = document.getElementById('balance');
     const messageEl = document.getElementById('message');
 
-    // Load balance
+    // Load player balance
     const accounts = JSON.parse(localStorage.getItem('accounts')) || {};
     const currentUser = localStorage.getItem('currentUser');
-    if (currentUser && accounts[currentUser]) {
-      playerBalance = accounts[currentUser].balance;
-      updateBalanceDisplay();
-    }
+    let playerBalance = currentUser && accounts[currentUser] ? accounts[currentUser].balance : 0;
+    updateBalanceDisplay();
 
-    function updateBalanceDisplay() {
-      balanceEl.textContent = `Coins: ${playerBalance}`;
-    }
+    function updateBalanceDisplay() { balanceEl.textContent = `Coins: ${playerBalance}`; }
 
     // ----------------------------
     // DECK FUNCTIONS
@@ -64,58 +56,35 @@
 
     function createDeck() {
       deck = [];
-      for (let suit of suits) {
-        for (let value of values) {
-          deck.push({suit, value});
-        }
-      }
+      for (let suit of suits) for (let value of values) deck.push({suit,value});
       deck = shuffle(deck);
     }
 
     function shuffle(array) {
-      for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i+1));
+      for (let i = array.length-1; i>0; i--) {
+        const j = Math.floor(Math.random()*(i+1));
         [array[i], array[j]] = [array[j], array[i]];
       }
       return array;
     }
 
-    function dealCard(hand) {
-      hand.push(deck.pop());
-      return hand[hand.length-1];
-    }
+    function dealCard(hand) { hand.push(deck.pop()); return hand[hand.length-1]; }
 
     function calculateScore(hand) {
-      let score = 0;
-      let aces = 0;
-      for (let card of hand) {
-        if (['J','Q','K'].includes(card.value)) score += 10;
-        else if (card.value === 'A') {
-          score += 11;
-          aces++;
-        } else score += Number(card.value);
+      let score=0, aces=0;
+      for (let c of hand){
+        if (['J','Q','K'].includes(c.value)) score+=10;
+        else if (c.value==='A') { score+=11; aces++; }
+        else score+=Number(c.value);
       }
-      while (score > 21 && aces > 0) {
-        score -= 10;
-        aces--;
-      }
+      while (score>21 && aces>0){ score-=10; aces--; }
       return score;
     }
 
-    // ----------------------------
-    // RENDER HANDS
-    // ----------------------------
-    function renderHands(showDealerFull=false) {
-      document.getElementById('player-cards').textContent = playerHand.map(c => `${c.value}${c.suit}`).join(' ');
-
-      if (showDealerFull) {
-        document.getElementById('dealer-cards').textContent = dealerHand.map(c => `${c.value}${c.suit}`).join(' ');
-      } else {
-        // show first card + hidden
-        const first = dealerHand[0];
-        document.getElementById('dealer-cards').textContent = `${first.value}${first.suit} ??`;
-      }
-
+    function renderHands(showDealerFull=false){
+      document.getElementById('player-cards').textContent = playerHand.map(c=>`${c.value}${c.suit}`).join(' ');
+      if (showDealerFull) document.getElementById('dealer-cards').textContent = dealerHand.map(c=>`${c.value}${c.suit}`).join(' ');
+      else document.getElementById('dealer-cards').textContent = `${dealerHand[0].value}${dealerHand[0].suit} ??`;
       playerScore = calculateScore(playerHand);
       dealerScore = calculateScore(dealerHand);
       document.getElementById('player-score').textContent = playerScore;
@@ -125,83 +94,94 @@
     // ----------------------------
     // GAME LOGIC
     // ----------------------------
-    let currentBet = 0;
-    let gameActive = false;
-
-    document.getElementById('start-btn').addEventListener('click', () => {
-      if (!currentUser) return alert("Login to play!");
+    document.getElementById('start-btn').addEventListener('click', ()=>{
+      if (!currentUser) return alert("Login first!");
       const bet = Number(document.getElementById('bet-amount').value);
-      if (!bet || bet > playerBalance) return alert("Invalid bet!");
-      currentBet = bet;
+      if (!bet || bet>playerBalance) return alert("Invalid bet!");
+      currentBet=bet;
 
-      playerHand = [];
-      dealerHand = [];
+      // Reset hands
+      playerHand=[]; dealerHand=[];
       createDeck();
-
       dealCard(playerHand);
       dealCard(playerHand);
       dealCard(dealerHand);
       dealerHiddenCard = dealCard(dealerHand);
 
       renderHands(false);
-      messageEl.textContent = "Game started! Hit or Stand?";
-      gameActive = true;
+      messageEl.textContent="Game started! Hit or Stand?";
+      gameActive=true;
 
-      // Check for immediate Blackjack
-      const playerScoreInit = calculateScore(playerHand);
-      const dealerScoreInit = calculateScore(dealerHand);
-      if (playerScoreInit === 21 && dealerScoreInit === 21) return endGame("Push! Both have Blackjack");
-      if (playerScoreInit === 21) return endGame("Blackjack! You win!");
-      if (dealerScoreInit === 21) return endGame("Dealer has Blackjack! You lose!");
+      // Auto Blackjack checks
+      const pScore=calculateScore(playerHand);
+      const dScore=calculateScore(dealerHand);
+      if (pScore===21 && dScore===21) return endGame("Push! Both Blackjack");
+      if (pScore===21) return endGame("Blackjack! You win!", 1.25); // lower payout
+      if (dScore===21) return endGame("Dealer has Blackjack! You lose!");
     });
 
-    document.getElementById('hit-btn').addEventListener('click', () => {
+    document.getElementById('hit-btn').addEventListener('click', ()=>{
       if (!gameActive) return;
       dealCard(playerHand);
       renderHands(false);
-      if (calculateScore(playerHand) > 21) endGame("Bust! You lose.");
+      if (calculateScore(playerHand)>21) endGame("Bust! You lose!");
     });
 
-    document.getElementById('stand-btn').addEventListener('click', () => {
+    document.getElementById('stand-btn').addEventListener('click', ()=>{
       if (!gameActive) return;
-      // reveal dealer
-      renderHands(true);
+      dealerPlay();
+    });
 
-      while (calculateScore(dealerHand) < 17) {
+    document.getElementById('double-btn').addEventListener('click', ()=>{
+      if (!gameActive) return;
+      if (currentBet*2>playerBalance) return alert("Not enough coins to double!");
+      currentBet*=2;
+      dealCard(playerHand);
+      renderHands(false);
+      if (calculateScore(playerHand)>21) endGame("Bust! You lose!");
+      else dealerPlay();
+    });
+
+    function dealerPlay(){
+      renderHands(true);
+      const soft17 = (hand)=>{ 
+        let score=0, aces=0;
+        for (let c of hand){
+          if (['J','Q','K'].includes(c.value)) score+=10;
+          else if (c.value==='A'){score+=11; aces++;}
+          else score+=Number(c.value);
+        }
+        return score===17 && aces>0;
+      };
+
+      let dScore=calculateScore(dealerHand);
+      while (dScore<17 || soft17(dealerHand)){
         dealCard(dealerHand);
+        dScore=calculateScore(dealerHand);
         renderHands(true);
       }
 
-      const pScore = calculateScore(playerHand);
-      const dScore = calculateScore(dealerHand);
-
-      if (dScore > 21 || pScore > dScore) endGame("You win!");
-      else if (pScore < dScore) endGame("Dealer wins!");
+      const pScore=calculateScore(playerHand);
+      if (dScore>21 || pScore>dScore) endGame("You win!");
+      else if (pScore<dScore) endGame("Dealer wins!");
       else endGame("Push!");
-    });
-
-    document.getElementById('double-btn').addEventListener('click', () => {
-      if (!gameActive) return;
-      if (currentBet*2 > playerBalance) return alert("Not enough coins to double!");
-      currentBet *= 2;
-      dealCard(playerHand);
-      renderHands(false);
-      if (calculateScore(playerHand) > 21) endGame("Bust! You lose.");
-      else document.getElementById('stand-btn').click();
-    });
-
-    function endGame(msg) {
-      gameActive = false;
-      renderHands(true); // reveal dealer
-      messageEl.textContent = msg;
-      if (msg.includes("win") || msg.includes("Blackjack! You win!")) playerBalance += currentBet;
-      else if (msg.includes("lose") || msg.includes("Bust") || msg.includes("Dealer wins")) playerBalance -= currentBet;
-      updateBalanceDisplay();
-
-      // Save to localStorage
-      accounts[currentUser].balance = playerBalance;
-      localStorage.setItem('accounts', JSON.stringify(accounts));
     }
+
+    // ----------------------------
+    // END GAME
+    // ----------------------------
+    function endGame(msg,payoutMultiplier=1){
+      gameActive=false;
+      renderHands(true);
+      messageEl.textContent=msg;
+
+      if (msg.includes("win")) playerBalance+=Math.floor(currentBet*payoutMultiplier);
+      else if (msg.includes("lose") || msg.includes("Bust") || msg.includes("Dealer wins")) playerBalance-=currentBet;
+
+      updateBalanceDisplay();
+      if (currentUser) { accounts[currentUser].balance=playerBalance; localStorage.setItem('accounts',JSON.stringify(accounts)); }
+    }
+
   </script>
 </body>
 </html>
