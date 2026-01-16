@@ -32,8 +32,8 @@
     <button id="deposit-btn">Deposit</button>
 
     <div id="withdraw-container">
-      <p>To withdraw coins: Make a Gamepass with the amount of coins you entered and put your Roblox gamepass link in the text box below.</p>
-      <input id="withdraw-username" placeholder="Your Gamepass (for withdraw)" />
+      <p>To withdraw coins: Make a Gamepass with the amount of coins you entered and paste the link below.</p>
+      <input id="withdraw-link" placeholder="Paste your Roblox Gamepass link here" />
       <button id="withdraw-btn">Request Withdraw</button>
     </div>
   </section>
@@ -198,7 +198,7 @@
       pendingWithdrawalsEl.innerHTML = '';
       pendingWithdrawals.forEach((item, index) => {
         const li = document.createElement('li');
-        li.textContent = `[${item.time}] ${item.username} wants to withdraw ${item.amount} coins `;
+        li.innerHTML = `[${item.time}] ${item.username} requests withdrawal of ${item.amount} coins. Link: <a href="${item.link}" target="_blank">${item.link}</a>`;
         const approveBtn = document.createElement('button');
         approveBtn.textContent = "Approve";
         approveBtn.addEventListener('click', () => approveWithdraw(index));
@@ -242,20 +242,28 @@
       renderPendingLists();
     });
 
-    // Withdraw request
+    // Withdraw request with Gamepass link
     document.getElementById('withdraw-btn').addEventListener('click', () => {
-      const withdrawUsername = document.getElementById('withdraw-username').value.trim();
+      const link = document.getElementById('withdraw-link').value.trim();
       const amount = Number(amountEl.value);
 
-      if (!withdrawUsername) return alert("Enter your username in the text box");
-      if (!amount || amount <= 0) return alert("Enter valid amount");
+      if (!link) return alert("Paste your Roblox Gamepass link!");
+      if (!link.startsWith("https://create.roblox.com/dashboard/creations/")) {
+        return alert("Invalid Gamepass link!");
+      }
+      if (!amount || amount <= 0) return alert("Enter a valid amount");
 
-      pendingWithdrawals.push({ username: withdrawUsername, amount, time: new Date().toLocaleString() });
+      pendingWithdrawals.push({
+        link,
+        amount,
+        username: currentUser || "Unknown",
+        time: new Date().toLocaleString()
+      });
       localStorage.setItem('pendingWithdrawals', JSON.stringify(pendingWithdrawals));
 
-      alert(`Withdrawal request submitted! Please wait for admin approval.`);
+      alert("Withdrawal request submitted! Admin will review your Gamepass link.");
       amountEl.value = '';
-      document.getElementById('withdraw-username').value = '';
+      document.getElementById('withdraw-link').value = '';
       renderPendingLists();
     });
 
