@@ -13,20 +13,16 @@
 </head>
 <body>
   <h1>Transaction Logs</h1>
-  <ul id="log-list">
-    <li>Loading logs...</li>
-  </ul>
+  <ul id="log-list"></ul>
 
-  <button id="refresh-btn">Refresh Logs</button>
   <script>
     const logList = document.getElementById('log-list');
-    const refreshBtn = document.getElementById('refresh-btn');
 
-    function renderTransactionLog(){
+    function renderTransactionLog() {
       const logs = JSON.parse(localStorage.getItem("transactionLogs")) || [];
       logList.innerHTML = "";
 
-      if(logs.length === 0){
+      if (logs.length === 0) {
         logList.innerHTML = "<li>No transactions yet.</li>";
         return;
       }
@@ -35,7 +31,7 @@
         const li = document.createElement("li");
         let text = "";
 
-        switch(l.type){
+        switch(l.type) {
           case "deposit":
             text = `[Deposit] ${l.user} deposited ${l.amount} coins`;
             break;
@@ -59,11 +55,8 @@
       });
     }
 
-    // Refresh logs on page load
+    // Render logs on page load
     renderTransactionLog();
-
-    // Refresh button
-    refreshBtn.onclick = renderTransactionLog;
   </script>
 </body>
 </html>
