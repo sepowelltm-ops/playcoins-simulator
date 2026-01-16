@@ -1,1 +1,145 @@
-e
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Mines</title>
+  <link rel="stylesheet" href="../style.css">
+  <style>
+    #grid {
+      display: grid;
+      grid-template-columns: repeat(5, 60px);
+      grid-gap: 5px;
+      margin-top: 20px;
+    }
+    .tile {
+      width: 60px; height: 60px;
+      background: #ccc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 18px;
+      border-radius: 5px;
+    }
+    .safe { background: #8f8; }
+    .mine { background: #f88; }
+  </style>
+</head>
+<body>
+  <h1>Mines</h1>
+  <div id="balance">Coins: 0</div>
+  <div id="message"></div>
+  <div id="controls">
+    <input type="number" id="bet-amount" placeholder="Bet coins" min="1">
+    <button id="start-btn">Start Game</button>
+    <button id="cashout-btn" disabled>Cash Out</button>
+  </div>
+
+  <div id="multiplier-display">Multiplier: x1.00</div>
+  <div id="grid"></div>
+
+  <script>
+    const balanceEl = document.getElementById('balance');
+    const messageEl = document.getElementById('message');
+    const multiplierEl = document.getElementById('multiplier-display');
+    const gridEl = document.getElementById('grid');
+
+    const accounts = JSON.parse(localStorage.getItem('accounts')) || {};
+    const currentUser = localStorage.getItem('currentUser');
+
+    let playerBalance = currentUser && accounts[currentUser] ? accounts[currentUser].balance : 0;
+    updateBalance();
+
+    let betAmount = 0;
+    let multiplier = 1;
+    let gameActive = false;
+    let mines = [];
+    let revealed = [];
+
+    const gridSize = 25; // 5x5
+    const mineCount = 5; // house can adjust
+
+    function updateBalance(){ balanceEl.textContent = `Coins: ${playerBalance}`; }
+
+    document.getElementById('start-btn').onclick = () => {
+      if (!currentUser) return alert("Login first!");
+      betAmount = Number(document.getElementById('bet-amount').value);
+      if (!betAmount || betAmount > playerBalance) return alert("Invalid bet");
+
+      multiplier = 1;
+      revealed = [];
+      gameActive = true;
+      messageEl.textContent = "Click a safe tile!";
+      multiplierEl.textContent = `Multiplier: x${multiplier.toFixed(2)}`;
+
+      document.getElementById('cashout-btn').disabled = false;
+      document.getElementById('start-btn').disabled = true;
+
+      generateGrid();
+    };
+
+    function generateGrid(){
+      gridEl.innerHTML = "";
+      mines = [];
+      // House-favored bias: first 2 rows more likely mines
+      while(mines.length < mineCount){
+        let idx = Math.floor(Math.random() * gridSize);
+        if(!mines.includes(idx)){
+          // Slight bias: first 10 tiles more likely to be mine
+          if(idx < 10 && Math.random()<0.7){ mines.push(idx); }
+          else if(idx >=10){ mines.push(idx); }
+        }
+      }
+
+      for(let i=0;i<gridSize;i++){
+        const tile = document.createElement('div');
+        tile.classList.add('tile');
+        tile.dataset.index = i;
+        tile.onclick = clickTile;
+        gridEl.appendChild(tile);
+      }
+    }
+
+    function clickTile(e){
+      if(!gameActive) return;
+      const idx = Number(e.target.dataset.index);
+      if(revealed.includes(idx)) return;
+      revealed.push(idx);
+
+      if(mines.includes(idx)){
+        e.target.classList.add('mine');
+        gameActive=false;
+        playerBalance -= betAmount;
+        accounts[currentUser].balance = playerBalance;
+        localStorage.setItem('accounts', JSON.stringify(accounts));
+        messageEl.textContent = `💥 Boom! You hit a mine. Lost ${betAmount} coins.`;
+        endGame();
+        return;
+      }
+
+      e.target.classList.add('safe');
+      multiplier += 0.15; // increase multiplier for each safe
+      multiplierEl.textContent = `Multiplier: x${multiplier.toFixed(2)}`;
+      messageEl.textContent = "Safe! Click next tile or cash out.";
+    }
+
+    document.getElementById('cashout-btn').onclick = () => {
+      if(!gameActive) return;
+      const winnings = Math.floor(betAmount * multiplier);
+      playerBalance += winnings;
+      accounts[currentUser].balance = playerBalance;
+      localStorage.setItem('accounts', JSON.stringify(accounts));
+      messageEl.textContent = `Cashed out! Won ${winnings} coins.`;
+      gameActive=false;
+      endGame();
+    };
+
+    function endGame(){
+      updateBalance();
+      document.getElementById('cashout-btn').disabled = true;
+      document.getElementById('start-btn').disabled = false;
+    }
+  </script>
+</body>
+</html>
