@@ -1,76 +1,66 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Cases - PlayCoins</title>
-  <link rel="stylesheet" href="../style.css" />
+  <meta charset="UTF-8">
+  <title>Cases</title>
+  <link rel="stylesheet" href="../style.css">
+  <style>
+    #case-result {
+      font-size: 20px;
+      margin-top: 20px;
+      font-weight: bold;
+    }
+  </style>
 </head>
 <body>
-  <header>
-    <h1>Cases</h1>
-    <div id="balance">Coins: 5</div>
-  </header>
+  <h1>Cases / Loot Boxes</h1>
+  <div id="balance">Coins: 0</div>
+  <div id="message"></div>
 
-  <section class="game-controls">
-    <input id="username" placeholder="Enter your username" />
-    <input id="bet" type="number" placeholder="Bet Amount" />
+  <div id="controls">
+    <input type="number" id="bet-amount" placeholder="Bet coins" min="1">
     <button id="open-btn">Open Case</button>
-  </section>
+  </div>
 
-  <section id="case-log">
-    <p>Enter your bet and open a case!</p>
-  </section>
+  <div id="case-result"></div>
 
-  <a href="../index.html">Back to Main Menu</a>
-
-  <script src="../script.js"></script>
   <script>
-    const openBtn = document.getElementById("open-btn");
-    const caseLog = document.getElementById("case-log");
-    const balanceEl = document.getElementById("balance");
-    const usernameEl = document.getElementById("username");
-    const betEl = document.getElementById("bet");
+    const balanceEl = document.getElementById('balance');
+    const messageEl = document.getElementById('message');
+    const caseResultEl = document.getElementById('case-result');
 
-    function updateBalanceDisplay() {
-      balanceEl.textContent = `Coins: ${balance}`;
-    }
+    const accounts = JSON.parse(localStorage.getItem('accounts')) || {};
+    const currentUser = localStorage.getItem('currentUser');
 
-    // Possible rewards (weighted slightly in favor of house)
-    const rewards = [
-      { name: "Common Item", chance: 0.5, multiplier: 1.2 },
-      { name: "Uncommon Item", chance: 0.3, multiplier: 1.5 },
-      { name: "Rare Item", chance: 0.15, multiplier: 2 },
-      { name: "Legendary Item", chance: 0.05, multiplier: 5 }
-    ];
+    let playerBalance = currentUser && accounts[currentUser] ? accounts[currentUser].balance : 0;
+    updateBalance();
 
-    function pickReward() {
-      const roll = Math.random();
-      let cumulative = 0;
-      for (const r of rewards) {
-        cumulative += r.chance;
-        if (roll <= cumulative) return r;
-      }
-      return rewards[0]; // fallback
-    }
+    function updateBalance(){ balanceEl.textContent = `Coins: ${playerBalance}`; }
 
-    openBtn.addEventListener("click", () => {
-      const username = usernameEl.value.trim() || "Unknown";
-      const bet = Number(betEl.value);
-      if (bet <= 0 || isNaN(bet)) return alert("Enter a valid bet amount.");
-      if (bet > balance) return alert("Not enough coins.");
+    document.getElementById('open-btn').onclick = () => {
+      if(!currentUser) return alert("Login first!");
+      const bet = Number(document.getElementById('bet-amount').value);
+      if(!bet || bet>playerBalance) return alert("Invalid bet");
 
-      balance -= bet;
+      // ---------------- HOUSE-FAVORED MULTIPLIERS ----------------
+      // Define pool with bias: more low multipliers
+      const multipliers = [
+        0.5,0.5,0.5,0.5,1,1,1.1,1.2,1.5,2,3
+      ];
+      // Pick one randomly
+      const multiplier = multipliers[Math.floor(Math.random()*multipliers.length)];
 
-      const reward = pickReward();
-      const winnings = Math.floor(bet * reward.multiplier);
-      balance += winnings;
+      const winnings = Math.floor(bet * multiplier);
+      playerBalance -= bet; // remove bet first
+      playerBalance += winnings; // add winnings
 
-      caseLog.innerHTML = `<p>${username} opened a case and got <b>${reward.name}</b> for ${winnings} coins!</p>`;
-      updateBalanceDisplay();
-      betEl.value = "";
-    });
+      accounts[currentUser].balance = playerBalance;
+      localStorage.setItem('accounts', JSON.stringify(accounts));
 
-    updateBalanceDisplay();
+      updateBalance();
+      caseResultEl.textContent = `Case opened! Multiplier: x${multiplier.toFixed(2)} — Won ${winnings} coins`;
+      messageEl.textContent = "Open another case or change your bet.";
+    };
   </script>
 </body>
 </html>
