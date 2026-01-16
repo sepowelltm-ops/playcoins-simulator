@@ -1,1 +1,78 @@
-e
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dice Duel</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <h1>Dice Duel</h1>
+  <div id="balance">Coins: 0</div>
+  <div id="message"></div>
+
+  <div id="controls">
+    <input type="number" id="bet-amount" placeholder="Bet coins" min="1">
+    <select id="player-number">
+      <option value="1">1</option>
+      <option value="2">2</option>
+      <option value="3">3</option>
+      <option value="4">4</option>
+      <option value="5">5</option>
+      <option value="6">6</option>
+    </select>
+    <button id="roll-btn">Roll Dice</button>
+  </div>
+
+  <div id="dice-result"></div>
+
+  <script>
+    const balanceEl = document.getElementById('balance');
+    const messageEl = document.getElementById('message');
+    const diceResultEl = document.getElementById('dice-result');
+
+    const accounts = JSON.parse(localStorage.getItem('accounts')) || {};
+    const currentUser = localStorage.getItem('currentUser');
+
+    let playerBalance = currentUser && accounts[currentUser] ? accounts[currentUser].balance : 0;
+    updateBalance();
+
+    function updateBalance(){ balanceEl.textContent = `Coins: ${playerBalance}`; }
+
+    document.getElementById('roll-btn').onclick = () => {
+      if (!currentUser) return alert("Login first!");
+
+      const bet = Number(document.getElementById('bet-amount').value);
+      if (!bet || bet > playerBalance) return alert("Invalid bet");
+
+      const playerChoice = Number(document.getElementById('player-number').value);
+
+      // ---------------- HOUSE BIAS ----------------
+      let dicePool = [1,2,3,4,5,6];
+
+      // Slightly increase chance for numbers != player choice
+      for(let i=0; i<3; i++){
+        dicePool.push(...dicePool.filter(n => n !== playerChoice));
+      }
+
+      const diceRoll = dicePool[Math.floor(Math.random() * dicePool.length)];
+
+      diceResultEl.textContent = `Dice rolled: ${diceRoll}`;
+
+      if(diceRoll === playerChoice){
+        // Player wins
+        const winnings = bet;
+        playerBalance += winnings;
+        messageEl.textContent = `You guessed ${playerChoice} and won ${winnings} coins!`;
+      } else {
+        // Player loses
+        playerBalance -= bet;
+        messageEl.textContent = `You guessed ${playerChoice} and lost ${bet} coins.`;
+      }
+
+      accounts[currentUser].balance = playerBalance;
+      localStorage.setItem('accounts', JSON.stringify(accounts));
+      updateBalance();
+    };
+  </script>
+</body>
+</html>
