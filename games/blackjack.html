@@ -39,11 +39,12 @@
     let deck = [];
     let playerScore = 0;
     let dealerScore = 0;
+    let dealerHiddenCard = null;
     let playerBalance = 0;
     const balanceEl = document.getElementById('balance');
     const messageEl = document.getElementById('message');
 
-    // Load balance from localStorage
+    // Load balance
     const accounts = JSON.parse(localStorage.getItem('accounts')) || {};
     const currentUser = localStorage.getItem('currentUser');
     if (currentUser && accounts[currentUser]) {
@@ -94,7 +95,6 @@
           aces++;
         } else score += Number(card.value);
       }
-      // Adjust Aces
       while (score > 21 && aces > 0) {
         score -= 10;
         aces--;
@@ -102,13 +102,24 @@
       return score;
     }
 
-    function renderHands() {
+    // ----------------------------
+    // RENDER HANDS
+    // ----------------------------
+    function renderHands(showDealerFull=false) {
       document.getElementById('player-cards').textContent = playerHand.map(c => `${c.value}${c.suit}`).join(' ');
-      document.getElementById('dealer-cards').textContent = dealerHand.map(c => `${c.value}${c.suit}`).join(' ');
+
+      if (showDealerFull) {
+        document.getElementById('dealer-cards').textContent = dealerHand.map(c => `${c.value}${c.suit}`).join(' ');
+      } else {
+        // show first card + hidden
+        const first = dealerHand[0];
+        document.getElementById('dealer-cards').textContent = `${first.value}${first.suit} ??`;
+      }
+
       playerScore = calculateScore(playerHand);
       dealerScore = calculateScore(dealerHand);
       document.getElementById('player-score').textContent = playerScore;
-      document.getElementById('dealer-score').textContent = dealerScore;
+      document.getElementById('dealer-score').textContent = showDealerFull ? dealerScore : "?";
     }
 
     // ----------------------------
@@ -126,34 +137,46 @@
       playerHand = [];
       dealerHand = [];
       createDeck();
+
       dealCard(playerHand);
       dealCard(playerHand);
       dealCard(dealerHand);
-      dealCard(dealerHand);
-      renderHands();
+      dealerHiddenCard = dealCard(dealerHand);
+
+      renderHands(false);
       messageEl.textContent = "Game started! Hit or Stand?";
       gameActive = true;
+
+      // Check for immediate Blackjack
+      const playerScoreInit = calculateScore(playerHand);
+      const dealerScoreInit = calculateScore(dealerHand);
+      if (playerScoreInit === 21 && dealerScoreInit === 21) return endGame("Push! Both have Blackjack");
+      if (playerScoreInit === 21) return endGame("Blackjack! You win!");
+      if (dealerScoreInit === 21) return endGame("Dealer has Blackjack! You lose!");
     });
 
     document.getElementById('hit-btn').addEventListener('click', () => {
       if (!gameActive) return;
       dealCard(playerHand);
-      renderHands();
-      if (playerScore > 21) {
-        endGame("Bust! You lose.");
-      }
+      renderHands(false);
+      if (calculateScore(playerHand) > 21) endGame("Bust! You lose.");
     });
 
     document.getElementById('stand-btn').addEventListener('click', () => {
       if (!gameActive) return;
-      // Dealer hits until 17
-      while (dealerScore < 17) {
+      // reveal dealer
+      renderHands(true);
+
+      while (calculateScore(dealerHand) < 17) {
         dealCard(dealerHand);
-        dealerScore = calculateScore(dealerHand);
+        renderHands(true);
       }
-      renderHands();
-      if (dealerScore > 21 || playerScore > dealerScore) endGame("You win!");
-      else if (playerScore < dealerScore) endGame("Dealer wins!");
+
+      const pScore = calculateScore(playerHand);
+      const dScore = calculateScore(dealerHand);
+
+      if (dScore > 21 || pScore > dScore) endGame("You win!");
+      else if (pScore < dScore) endGame("Dealer wins!");
       else endGame("Push!");
     });
 
@@ -162,16 +185,17 @@
       if (currentBet*2 > playerBalance) return alert("Not enough coins to double!");
       currentBet *= 2;
       dealCard(playerHand);
-      renderHands();
-      if (playerScore > 21) endGame("Bust! You lose.");
+      renderHands(false);
+      if (calculateScore(playerHand) > 21) endGame("Bust! You lose.");
       else document.getElementById('stand-btn').click();
     });
 
     function endGame(msg) {
       gameActive = false;
+      renderHands(true); // reveal dealer
       messageEl.textContent = msg;
-      if (msg.includes("win")) playerBalance += currentBet;
-      else if (msg.includes("lose") || msg.includes("Bust")) playerBalance -= currentBet;
+      if (msg.includes("win") || msg.includes("Blackjack! You win!")) playerBalance += currentBet;
+      else if (msg.includes("lose") || msg.includes("Bust") || msg.includes("Dealer wins")) playerBalance -= currentBet;
       updateBalanceDisplay();
 
       // Save to localStorage
