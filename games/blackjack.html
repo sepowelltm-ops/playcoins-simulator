@@ -1,1 +1,67 @@
-e
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Blackjack - PlayCoins</title>
+  <link rel="stylesheet" href="../style.css" />
+</head>
+<body>
+  <header>
+    <h1>Blackjack</h1>
+    <div id="balance">Coins: 5</div>
+  </header>
+
+  <section class="game-controls">
+    <input id="username" placeholder="Enter your username" />
+    <input id="bet" type="number" placeholder="Bet Amount" />
+    <button id="play-btn">Play Blackjack</button>
+  </section>
+
+  <section id="game-log">
+    <p>Place a bet and click Play!</p>
+  </section>
+
+  <a href="../index.html">Back to Main Menu</a>
+
+  <script src="../script.js"></script>
+  <script>
+    // Blackjack logic (simple, favorable odds for house)
+    const playBtn = document.getElementById("play-btn");
+    const gameLog = document.getElementById("game-log");
+    const balanceEl = document.getElementById("balance");
+    const usernameEl = document.getElementById("username");
+    const betEl = document.getElementById("bet");
+
+    function updateBalanceDisplay() {
+      balanceEl.textContent = `Coins: ${balance}`;
+    }
+
+    playBtn.addEventListener("click", () => {
+      const username = usernameEl.value.trim() || "Unknown";
+      let bet = Number(betEl.value);
+      if (bet <= 0 || isNaN(bet)) return alert("Enter a valid bet amount.");
+      if (bet > balance) return alert("Not enough coins.");
+
+      // House edge: player wins ~45% chance
+      const outcome = Math.random();
+      balance -= bet; // subtract bet first
+
+      if (outcome < 0.45) {
+        // player wins
+        const winnings = Math.floor(bet * 1.9); // pay 1.9x
+        balance += winnings;
+        gameLog.innerHTML = `<p>${username} won ${winnings} coins!</p>`;
+      } else {
+        // house wins
+        gameLog.innerHTML = `<p>${username} lost ${bet} coins!</p>`;
+      }
+
+      updateBalanceDisplay();
+      betEl.value = "";
+    });
+
+    // Initial display
+    updateBalanceDisplay();
+  </script>
+</body>
+</html>
