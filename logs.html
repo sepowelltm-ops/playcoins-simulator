@@ -23,24 +23,24 @@
   <script>
     const logsList = document.getElementById('logs-list');
 
-    // Get transaction log and username from localStorage
-    const logs = JSON.parse(localStorage.getItem('transactionLog')) || [];
-    const username = localStorage.getItem('username') || "Unknown";
+    // Get transaction log from localStorage
+    const transactionLog = JSON.parse(localStorage.getItem('transactionLog')) || [];
 
-    // Display logs
     function renderLogs() {
       logsList.innerHTML = '';
-      if (logs.length === 0) {
+      if (transactionLog.length === 0) {
         logsList.innerHTML = '<li>No transactions yet.</li>';
         return;
       }
-      logs.forEach(log => {
+
+      transactionLog.forEach(log => {
         const li = document.createElement('li');
-        li.textContent = `[${log.time}] ${log.type}: ${log.amount} coins (User: ${username})`;
+        li.textContent = `[${log.time}] ${log.type}: ${log.amount} coins (User: ${log.username})`;
         logsList.appendChild(li);
       });
     }
 
+    // Show logs immediately
     renderLogs();
   </script>
 </body>
