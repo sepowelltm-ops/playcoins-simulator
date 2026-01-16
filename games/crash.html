@@ -1,117 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Crash</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<h1>Crash</h1>
+
+<p>Balance: <span id="balance">0</span> coins</p>
+
+<input type="number" id="betAmount" placeholder="Bet amount" min="1">
+<br><br>
+
+<button id="startBtn">Start</button>
+<button id="cashoutBtn" disabled>Cash Out</button>
+
+<h2 id="multiplier">1.00x</h2>
+<h3 id="status"></h3>
+
+<script src="script.js"></script>
 <script>
-const balanceEl = document.getElementById('balance');
-const messageEl = document.getElementById('message');
-const multiplierEl = document.getElementById('multiplier-display');
-
-const accounts = JSON.parse(localStorage.getItem('accounts')) || {};
-const currentUser = localStorage.getItem('currentUser');
-
-let playerBalance = currentUser && accounts[currentUser]
-  ? accounts[currentUser].balance
-  : 0;
-
-updateBalance();
-
-let betAmount = 0;
-let multiplier = 1;
-let interval = null;
+let crashInterval;
+let multiplier = 1.0;
 let crashed = false;
+let bet = 0;
+let crashPoint = 0;
 
-function updateBalance() {
-  balanceEl.textContent = `Coins: ${playerBalance}`;
+const startBtn = document.getElementById("startBtn");
+const cashoutBtn = document.getElementById("cashoutBtn");
+const multiplierText = document.getElementById("multiplier");
+const statusText = document.getElementById("status");
+
+function getBalance() {
+  return parseInt(localStorage.getItem("balance") || "5");
 }
 
-/* ---------------- START GAME ---------------- */
-document.getElementById('start-btn').onclick = () => {
-  if (!currentUser) return alert("Login first");
+function setBalance(amount) {
+  localStorage.setItem("balance", amount);
+  document.getElementById("balance").textContent = amount;
+}
 
-  betAmount = Number(document.getElementById('bet-amount').value);
-  if (!betAmount || betAmount > playerBalance) return alert("Invalid bet");
+function generateCrashPoint(betAmount) {
+  // HOUSE EDGE:
+  // Higher bet = lower average crash
+  const base = Math.random() * 3 + 1;
+  const penalty = Math.min(betAmount / 20, 1.5);
+  return Math.max(1.05, base - penalty);
+}
 
-  multiplier = 1;
+startBtn.onclick = () => {
+  bet = parseInt(document.getElementById("betAmount").value);
+  if (!bet || bet <= 0) return alert("Invalid bet");
+
+  let balance = getBalance();
+  if (bet > balance) return alert("Not enough coins");
+
+  // Deduct bet
+  setBalance(balance - bet);
+
+  multiplier = 1.0;
   crashed = false;
-  multiplierEl.textContent = "Multiplier: x1.00";
-  messageEl.textContent = "Crash started…";
+  crashPoint = generateCrashPoint(bet);
 
-  document.getElementById('start-btn').disabled = true;
-  document.getElementById('cashout-btn').disabled = false;
+  multiplierText.textContent = "1.00x";
+  statusText.textContent = "Running...";
+  cashoutBtn.disabled = false;
+  startBtn.disabled = true;
 
-  const betRatio = betAmount / playerBalance; // BIG factor
-
-  /* 💀 HOUSE BIAS */
-  const maxCrash = Math.max(
-    1.2,
-    5 - (betRatio * 6)      // higher bet → much lower ceiling
-  );
-
-  let crashPoint =
-    Math.random() * (maxCrash - 1.05) + 1.05;
-
-  // Big bets have a chance to instantly crash
-  if (betRatio > 0.4 && Math.random() < betRatio) {
-    crashPoint = 1 + Math.random() * 0.15;
-  }
-
-  // Speed increases with bet size
-  const speed = Math.max(
-    20,
-    80 - betRatio * 100
-  );
-
-  runCrash(crashPoint, speed);
-};
-
-/* ---------------- CRASH LOOP ---------------- */
-function runCrash(crashPoint, speed) {
-  interval = setInterval(() => {
-    if (crashed) return clearInterval(interval);
-
+  crashInterval = setInterval(() => {
     multiplier += 0.01 + multiplier * 0.002;
-    multiplierEl.textContent = `Multiplier: x${multiplier.toFixed(2)}`;
+    multiplierText.textContent = multiplier.toFixed(2) + "x";
 
     if (multiplier >= crashPoint) {
-      doCrash();
+      clearInterval(crashInterval);
+      crashed = true;
+      cashoutBtn.disabled = true;
+      startBtn.disabled = false;
+      statusText.textContent = "💥 Crashed at " + multiplier.toFixed(2) + "x";
     }
-  }, speed);
-}
-
-/* ---------------- CASHOUT ---------------- */
-document.getElementById('cashout-btn').onclick = () => {
-  if (crashed) return;
-
-  crashed = true;
-  clearInterval(interval);
-
-  const winnings = Math.floor(betAmount * multiplier);
-  playerBalance += winnings;
-
-  accounts[currentUser].balance = playerBalance;
-  localStorage.setItem('accounts', JSON.stringify(accounts));
-
-  messageEl.textContent =
-    `Cashed out at x${multiplier.toFixed(2)} — won ${winnings} coins`;
-
-  endGame();
+  }, 100);
 };
 
-/* ---------------- LOSE ---------------- */
-function doCrash() {
-  crashed = true;
-  clearInterval(interval);
+cashoutBtn.onclick = () => {
+  if (crashed) return;
 
-  playerBalance -= betAmount;
-  accounts[currentUser].balance = playerBalance;
-  localStorage.setItem('accounts', JSON.stringify(accounts));
+  clearInterval(crashInterval);
+  cashoutBtn.disabled = true;
+  startBtn.disabled = false;
 
-  messageEl.textContent =
-    `💥 Crashed at x${multiplier.toFixed(2)} — lost ${betAmount} coins`;
+  const win = Math.floor(bet * multiplier);
+  setBalance(getBalance() + win);
 
-  endGame();
-}
+  statusText.textContent = "💰 Cashed out at " + multiplier.toFixed(2) + "x (+" + win + ")";
+};
 
-function endGame() {
-  updateBalance();
-  document.getElementById('cashout-btn').disabled = true;
-  document.getElementById('start-btn').disabled = false;
-}
+document.getElementById("balance").textContent = getBalance();
 </script>
+
+</body>
+</html>
